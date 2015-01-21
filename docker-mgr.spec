@@ -87,16 +87,24 @@ let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | 
 if [ ${docker_mgr_port_check} -eq 0 ]; then
     echo "docker-mgr      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
 fi
+chkconfig xinetd on
+chkconfig docker-mgr off
+service xinetd restart > /dev/null 2>&1
+/bin/true
 
 %postun
+chkconfig docker-mgr off > /dev/null 2>&1
+/bin/true
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
-
-%files -f /tmp/MANIFEST.%{name}
 if [ ${docker_mgr_port_check} -gt 0 ]; then
     cp -p /etc/services /tmp/services.$$
     egrep -v "Simple Remote Docker Manager" /tmp/services.$$ > /etc/services
     rm -f /tmp/services.$$
 fi
+service xinetd restart > /dev/null 2>&1
+/bin/true
+
+%files -f /tmp/MANIFEST.%{name}
 
 %changelog
 %define today %( date +%a" "%b" "%d" "%Y )
