@@ -88,7 +88,7 @@ if [ ${docker_mgr_port_check} -eq 0 ]; then
     echo "docker-mgr      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
 fi
 chkconfig xinetd on
-chkconfig docker-mgr off
+chkconfig docker-mgr on
 service xinetd restart > /dev/null 2>&1
 /bin/true
 
