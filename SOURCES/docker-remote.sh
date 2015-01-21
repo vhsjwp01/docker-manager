@@ -1,10 +1,14 @@
 #!/bin/bash
 #set -x
 
+PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
+TERM=vt100
+export TERM PATH
+
 SUCCESS=0
 ERROR=1
 
-DOCKER_MGR_PORT=49000
+DOCKER_MGR_PORT=42000
 
 exit_code=${SUCCESS}
 
@@ -22,8 +26,8 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
-        remote_host=`echo "${1}" | awk -F':' '{print $1}'`
-        remote_port=`echo "${1}" | awk -F':' '{print $NF}' | sed -e 's/[^0-9]//g'`
+        remote_host=`echo "${1}" | sed -e 's/:/\ /g' | awk '{print $1}'`
+        remote_port=`echo "${1}" | sed -e 's/:/\ /g' | awk '{print $2}' | sed -e 's/[^0-9]//g'`
         shift
     
         # Make sure host is resolvable
@@ -80,7 +84,28 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
     
             # Execute commands if possible
             if [ "${command}" != "" ]; then
-                output=`echo "${command}" | nc ${remote_host} ${docker_mgr_port}`
+
+                case ${command} in
+
+                    list)
+                        echo "${command}" | nc ${remote_host} ${docker_mgr_port}
+                    ;;
+
+                    *)
+                        # Get rid of spaces
+                        sanitized_command=`echo "${command}" | sed -e 's/\ /:ZZqC:/g'`
+                        #echo "My command is: ${sanitized_command}"
+                        echo "${sanitized_command}" | nc ${remote_host} ${docker_mgr_port}
+                        return_code=`echo "${command}" | nc ${remote_host} ${docker_mgr_port}`
+
+                        if [ ${return_code} -ne ${SUCCESS} ]; then
+                            exit_code=${ERROR}
+                        fi
+
+                    ;;
+
+                esac
+ 
             fi
     
         done
@@ -89,3 +114,4 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
 fi
 
+exit ${exit_code}
