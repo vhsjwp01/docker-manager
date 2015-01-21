@@ -55,9 +55,9 @@ docker-remote
 rm -rf %{buildroot}
 # Populate %{buildroot}
 mkdir -p %{buildroot}%{install_bin_dir}
-cp %{SOURCE0} %{buildroot}%{install_dir}/docker-remote
+cp %{SOURCE0} %{buildroot}%{install_bin_dir}/docker-remote
 mkdir -p %{buildroot}%{install_sbin_dir}
-cp %{SOURCE1} %{buildroot}%{install_dir}/docker_mgr
+cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/docker_mgr
 mkdir -p %{buildroot}/etc/xinetd.d
 cp %{SOURCE2} %{buildroot}/etc/xinetd.d/docker-mgr
 
@@ -85,7 +85,7 @@ done | sort -u >> /tmp/MANIFEST.%{name}
 %post
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
 if [ ${docker_mgr_port_check} -eq 0 ]; then
-    echo "docker-mgr      42000/tcp               # Simple Remote Docker Manager" >> /etc/services
+    echo "docker-mgr      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
 fi
 
 %postun
