@@ -1,0 +1,31 @@
+#!/bin/bash
+#set -x
+
+SUCCESS=0
+ERROR=1
+
+exit_code=${ERROR}
+
+read input
+
+if [ "${input}" != "" ]; then
+    key=`echo "${input}" | awk -F'=' '{print $1}'`
+    value=`echo "${input}" | sed -e "s?^${key}=??g"`
+
+    case ${key} in
+
+        list)
+            docker ps -a
+        ;;
+
+        pull|run|stop)
+
+            if [ "${value}" != "" ]; then
+                echo "docker ${key} ${value}"
+            fi
+
+        ;;
+            
+    esac
+
+fi

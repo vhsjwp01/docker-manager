@@ -1,0 +1,13 @@
+# default: off
+# description: The docker-mgr server performs simple docker tasks from remote 
+#	clients
+service docker-mgr
+{
+	disable	= no
+	flags		= IPv6
+	socket_type     = stream
+	wait            = no
+	user            = root
+	server          = /usr/local/sbin/docker_mgr
+	log_on_failure  += USERID
+}
