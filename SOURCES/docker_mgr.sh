@@ -35,6 +35,11 @@ if [ "${input}" != "" ]; then
             fi
 
         ;;
+
+        *)
+            # Exit ... quietly, peacefully, and enjoy it
+            exit
+        ;;
             
     esac
 

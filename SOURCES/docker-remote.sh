@@ -79,6 +79,11 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                     fi
     
                 ;;
+
+                *)
+                    # Exit ... quietly, peacefully, and enjoy it
+                    exit
+                ;;
     
             esac
     
