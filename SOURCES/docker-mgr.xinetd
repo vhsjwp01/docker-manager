@@ -8,6 +8,7 @@ service docker-mgr
 	socket_type     = stream
 	wait            = no
 	user            = root
+	group           = docker
 	server          = /usr/local/sbin/docker_mgr
 	log_on_failure  += USERID
 }

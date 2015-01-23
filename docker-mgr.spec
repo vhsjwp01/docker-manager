@@ -83,6 +83,8 @@ for i in `awk '{print $0}' /tmp/MANIFEST.%{name}.tmp` ; do
 done | sort -u >> /tmp/MANIFEST.%{name}
 
 %post
+chown root:docker %{install_sbin_dir}/docker_mgr
+chmod 750 %{install_sbin_dir}/docker_mgr
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
 if [ ${docker_mgr_port_check} -eq 0 ]; then
     echo "docker-mgr      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
