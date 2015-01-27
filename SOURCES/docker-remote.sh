@@ -27,7 +27,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
         remote_host=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g'`
-        remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]?g' -e 's?\`??g'`
+        remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g'`
         shift
     
         # Make sure host is resolvable
