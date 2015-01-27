@@ -15,7 +15,7 @@ exit_code=${ERROR}
 read input
 
 if [ "${input}" != "" ]; then
-    key=`echo "${input}" | awk -F'=' '{print $1}' | sed -e 's/?\`??g'`
+    key=`echo "${input}" | awk -F'=' '{print $1}' | sed -e 's?\`??g'`
     value=`echo "${input}" | sed -e "s?^${key}=??g" -e 's?:ZZqC:?\ ?g' -e 's?\"??g' -e 's?\`??g'`
 
     case ${key} in
