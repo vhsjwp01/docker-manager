@@ -26,8 +26,8 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
-        remote_host=`echo "${1}" | sed -e 's/:/\ /g' | awk '{print $1}'`
-        remote_port=`echo "${1}" | sed -e 's/:/\ /g' | awk '{print $2}' | sed -e 's/[^0-9]//g'`
+        remote_host=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g'`
+        remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]?g' -e 's?\`??g'`
         shift
     
         # Make sure host is resolvable
@@ -60,20 +60,22 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
         # Rip through commands and assign them
         while (( "${#}" )); do
             command=""
+            key=`echo "${1}" | sed -e 's?\`??g'`
     
-            case "${1}" in
+            case "${key}" in
     
                 list)
-                    command="${1}"
+                    command="${key}"
                     shift
                 ;;
     
                 pull|run|stop)
+                    value=`echo "${2}" | sed -e 's?\`??g'`
     
-                    if [ "${2}" = "" ]; then
+                    if [ "${value}" = "" ]; then
                         exit_code=${ERROR}
                     else
-                        command="${1}=\"${2}\""
+                        command="${key}=\"${value}\""
                         shift
                         shift
                     fi
@@ -97,8 +99,8 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                     ;;
 
                     *)
-                        # Get rid of spaces
-                        sanitized_command=`echo "${command}" | sed -e 's/\ /:ZZqC:/g'`
+                        # Replace spaceholders with spaces
+                        sanitized_command=`echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g'`
                         #echo "My command is: ${sanitized_command}"
                         echo "${sanitized_command}" | nc ${remote_host} ${docker_mgr_port}
                         return_code=`echo "${command}" | nc ${remote_host} ${docker_mgr_port}`
