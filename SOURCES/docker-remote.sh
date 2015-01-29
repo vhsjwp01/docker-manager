@@ -99,7 +99,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                     ;;
 
                     *)
-                        # Replace spaceholders with spaces
+                        # Replace spaces with spaceholders
                         sanitized_command=`echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g'`
                         #echo "My command is: ${sanitized_command}"
                         echo "${sanitized_command}" | nc ${remote_host} ${docker_mgr_port}

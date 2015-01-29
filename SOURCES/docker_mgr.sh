@@ -13,8 +13,9 @@ LOGFILE="/var/log/docker-mgr.log"
 exit_code=${ERROR}
 
 read input
+let input_wc=`echo "${input}" | wc -w | awk '{print $1}'`
 
-if [ "${input}" != "" ]; then
+if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
     key=`echo "${input}" | awk -F'=' '{print $1}' | sed -e 's?\`??g'`
     value=`echo "${input}" | sed -e "s?^${key}=??g" -e 's?:ZZqC:?\ ?g' -e 's?\"??g' -e 's?\`??g'`
 
