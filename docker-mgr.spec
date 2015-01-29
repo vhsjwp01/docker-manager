@@ -41,6 +41,9 @@ Requires: docker-io
 %define install_bin_dir %{install_base}/bin
 %define install_sbin_dir %{install_base}/sbin
 %define docker_mgr_port 42000
+%define remote_real_name docker-remote
+%define mgr_real_name docker_mgr
+%define xinetd_real_name docker-mgr
 
 Source0: ~/rpmbuild/SOURCES/docker-remote.sh
 Source1: ~/rpmbuild/SOURCES/docker_mgr.sh
@@ -55,11 +58,11 @@ docker-remote
 rm -rf %{buildroot}
 # Populate %{buildroot}
 mkdir -p %{buildroot}%{install_bin_dir}
-cp %{SOURCE0} %{buildroot}%{install_bin_dir}/docker-remote
+cp %{SOURCE0} %{buildroot}%{install_bin_dir}/%{remote_real_name}
 mkdir -p %{buildroot}%{install_sbin_dir}
-cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/docker_mgr
+cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
 mkdir -p %{buildroot}/etc/xinetd.d
-cp %{SOURCE2} %{buildroot}/etc/xinetd.d/docker-mgr
+cp %{SOURCE2} %{buildroot}/etc/xinetd.d/%{xinetd_real_name}
 
 # Build packaging manifest
 rm -rf /tmp/MANIFEST.%{name}* > /dev/null 2>&1
@@ -83,21 +86,21 @@ for i in `awk '{print $0}' /tmp/MANIFEST.%{name}.tmp` ; do
 done | sort -u >> /tmp/MANIFEST.%{name}
 
 %post
-chown root:docker %{install_sbin_dir}/docker_mgr
-chmod 750 %{install_sbin_dir}/docker_mgr
-chown root:docker %{install_bin_dir}/docker-remote
-chmod 750 %{install_bin_dir}/docker-remote
+chown root:docker %{install_sbin_dir}/%{mgr_real_name}
+chmod 750 %{install_sbin_dir}/%{mgr_real_name}
+chown root:docker %{install_bin_dir}/%{remote_real_name}
+chmod 750 %{install_bin_dir}/%{remote_real_name}
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
 if [ ${docker_mgr_port_check} -eq 0 ]; then
-    echo "docker-mgr      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
+    echo "%{xinetd_real_name}      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
 fi
 chkconfig xinetd on
-chkconfig docker-mgr on
+chkconfig %{xinetd_real_name}  on
 service xinetd restart > /dev/null 2>&1
 /bin/true
 
 %postun
-chkconfig docker-mgr off > /dev/null 2>&1
+chkconfig %{xinetd_real_name} off > /dev/null 2>&1
 /bin/true
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
 if [ ${docker_mgr_port_check} -gt 0 ]; then
