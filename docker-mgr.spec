@@ -84,6 +84,9 @@ for i in `awk '{print $0}' /tmp/MANIFEST.%{name}.tmp` ; do
     dir=`dirname "${filename}"`
     echo "${dir}/*"
 done | sort -u >> /tmp/MANIFEST.%{name}
+# Clean up what we can now and allow overwrite later
+rm -f /tmp/MANIFEST.%{name}.tmp
+chmod 666 /tmp/MANIFEST.%{name}
 
 %post
 chown root:docker %{install_sbin_dir}/%{mgr_real_name}
