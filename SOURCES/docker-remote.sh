@@ -33,33 +33,53 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
 fi
 
-# Make sure ${1} is a resolvable hostname
+# Make sure ${1} is a valid target
 if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
-        remote_host=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g'`
-        remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g'`
-        shift
+
+        case "${1}" in
+
+            test_env)
+                remote_host="lvicdockert01.ingramcontent.com lvicdockert02.ingramcontent.com"
+            ;;
+
+            qa_env)
+                remote_host="lvicdockerq01.ingramcontent.com lvicdockerq02.ingramcontent.com"
+            ;;
+
+            prod_env)
+                remote_host="lvicdockerp01.ingramcontent.com lvicdockerp02.ingramcontent.com"
+            ;;
+  
+            *)
+                remote_host=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g'`
+                remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g'`
+                shift
     
-        # Make sure host is resolvable
-        let valid_host=`host ${remote_host} 2> /dev/null | egrep -ic "domain name pointer|has address"`
+                # Make sure host is resolvable
+                let valid_host=`host ${remote_host} 2> /dev/null | egrep -ic "domain name pointer|has address"`
     
-        if [ ${valid_host} -eq 0 ]; then
-            err_msg="Supplied docker container host \"${remote_host}\" is invalid"
-            exit_code=${ERROR}
-        else
-    
-            if [ "${remote_port}" != "" ]; then
-                let docker_mgr_port=${remote_port}
-    
-                if [ ${docker_mgr_port} -gt 65535 -o ${docker_mgr_port} -lt 1 ]; then
-                    err_msg="Supplied docker container host port \"${docker_mgr_port}\" is invalid"
+                if [ ${valid_host} -eq 0 ]; then
+                    err_msg="Supplied docker container host \"${remote_host}\" is invalid"
                     exit_code=${ERROR}
+                else
+    
+                    if [ "${remote_port}" != "" ]; then
+                        let docker_mgr_port=${remote_port}
+    
+                        if [ ${docker_mgr_port} -gt 65535 -o ${docker_mgr_port} -lt 1 ]; then
+                            err_msg="Supplied docker container host port \"${docker_mgr_port}\" is invalid"
+                            exit_code=${ERROR}
+                        fi
+    
+                    fi
+    
                 fi
-    
-            fi
-    
-        fi
+
+            ;;
+
+        esac
     
     fi
 
@@ -106,24 +126,39 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
     
             # Execute commands if possible
             if [ "${command}" != "" ]; then
+                return_code=${SUCCESS}
 
                 case ${command} in
 
                     list)
-                        echo "${command}" | nc ${remote_host} ${docker_mgr_port}
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Docker images present on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc ${docker_host} ${docker_mgr_port}
+                            echo
+                        done
+
                     ;;
 
                     *)
                         # Replace spaces with spaceholders
                         sanitized_command=`echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g'`
-                        #echo "My command is: ${sanitized_command}"
-                        echo "${sanitized_command}" | nc ${remote_host} ${docker_mgr_port}
-                        return_code=`echo "${command}" | nc ${remote_host} ${docker_mgr_port}`
 
-                        if [ ${return_code} -ne ${SUCCESS} ]; then
-                            err_msg="Remote command \"${command}\" failed on docker container host \"${remote_host}\""
-                            exit_code=${ERROR}
-                        fi
+                        for docker_host in ${remote_host} ; do
+
+                            if [ ${exit_code} -eq ${SUCCESS} ]; then
+                                echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
+                                return_code=`echo "${command}" | nc ${docker_host} ${docker_mgr_port}`
+
+                                if [ ${return_code} -ne ${SUCCESS} ]; then
+                                    err_msg="Remote command \"${command}\" failed on docker container host \"${docker_host}\""
+                                    exit_code=${ERROR}
+                                fi
+
+                            fi
+
+                        done
 
                     ;;
 
