@@ -39,7 +39,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
         *)
             # Exit ... quietly, peacefully, and enjoy it
-            exit
+            exit ${exit_code}
         ;;
             
     esac
