@@ -23,15 +23,15 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 # 3. Tell the docker container host to stop the relevant container ID(s)
 # 4. Tell the docker container host to run the new container process
 
-# Make sure we have only two arguments
-if [ ${exit_code} -eq ${SUCCESS} ]; then
-
-    if [ ${#} -ne 2 ]; then
-        err_msg="${0} accepts two arguments and two arguments only"
-        exit_code=${ERROR}
-    fi
-
-fi
+## Make sure we have only two arguments
+#if [ ${exit_code} -eq ${SUCCESS} ]; then
+#
+#    if [ ${#} -ne 2 ]; then
+#        err_msg="${0} accepts two arguments and two arguments only"
+#        exit_code=${ERROR}
+#    fi
+#
+#fi
 
 # Make sure ${1} is a valid target
 if [ ${exit_code} -eq ${SUCCESS} ]; then
@@ -152,7 +152,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
                                 #echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
-                                return_code=`echo "${command}" | nc ${docker_host} ${docker_mgr_port}`
+                                return_code=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
 
                                 if [ ${return_code} -ne ${SUCCESS} ]; then
                                     err_msg="Remote command \"${command}\" failed on docker container host \"${docker_host}\""
