@@ -42,14 +42,17 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
             test_env)
                 remote_host="lvicdockert01.ingramcontent.com lvicdockert02.ingramcontent.com"
+                shift
             ;;
 
             qa_env)
                 remote_host="lvicdockerq01.ingramcontent.com lvicdockerq02.ingramcontent.com"
+                shift
             ;;
 
             prod_env)
                 remote_host="lvicdockerp01.ingramcontent.com lvicdockerp02.ingramcontent.com"
+                shift
             ;;
   
             *)
@@ -148,7 +151,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
-                                echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
+                                #echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
                                 return_code=`echo "${command}" | nc ${docker_host} ${docker_mgr_port}`
 
                                 if [ ${return_code} -ne ${SUCCESS} ]; then

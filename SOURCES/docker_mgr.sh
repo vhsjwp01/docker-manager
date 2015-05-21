@@ -22,8 +22,8 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
     case ${key} in
 
         list)
-            docker ps -a
-            echo "`date`: Running command \"docker ps -a\"" >> "${LOGFILE}"
+            echo "`date`: Running command \"docker ps -f status=running\"" >> "${LOGFILE}"
+            docker ps -f status=running
         ;;
 
         pull|run|stop)
@@ -32,14 +32,16 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
                 eval docker ${key} ${value} > /dev/null 2>&1
                 return_code=${?}
-                echo "${return_code}"
+                echo ${return_code}
             fi
 
         ;;
 
         *)
             # Exit ... quietly, peacefully, and enjoy it
-            exit ${exit_code}
+            echo "`date`: Received foreign request: \"key=${key} value=${value}\"" >> "${LOGFILE}"
+            echo 1
+            exit ${ERROR}
         ;;
             
     esac
