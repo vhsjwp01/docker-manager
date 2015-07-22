@@ -1,6 +1,76 @@
 #!/bin/bash
 #set -x
 
+################################################################################
+#                      S C R I P T    D E F I N I T I O N
+################################################################################
+#
+
+#-------------------------------------------------------------------------------
+# Revision History
+#-------------------------------------------------------------------------------
+# 20150121     Jason W. Plummer          Original: A script to allow remote
+#                                        sanitized nteraction with a docker
+#                                        runtime host
+# 20150127     Jason W. Plummer          Added command injection protection and
+#                                        fixed sed syntax error
+# 20150129     Jason W. Plummer          Added improved security during argument
+#                                        read in at the suggestion of D. Todd
+# 20150303     Jason W. Plummer          Added support for ICG docker 
+#                                        environment awareness (i.e. hardcoded 
+#                                        hostnames).  Added better error 
+#                                        feedback
+#                                        errors
+# 20150521     Jason W. Plummer          Was sending ${command} rather than 
+#                                        ${sanitized_command}.  Removed 2 
+#                                        argument restriction.  Fixed bad return
+#                                        code syntax
+# 20150722     Jason W. Plummer          Added capture of any remote error
+#                                        messages.  Added this style template
+
+################################################################################
+# DESCRIPTION
+################################################################################
+#
+
+# NAME: docker-remote
+# 
+# This script performs remote docker operations against a docker container
+# host.  This program is the client component, a daemon component called
+# docker_mgr must be listening on the docker container host.
+#
+# OPTIONS:
+#
+# docker-remote <remote_host>:<remote_port> <command> <command_arg>
+#
+# WHERE
+# 
+# <remote_host>   - The FQDN or IP address of a docker runtime host
+# <remote_port>   - The port to communicate with on <remote_host> *OPTIONAL*
+# <command>       - What to do.  Valid commands are:
+#    list             - List running containers on <remote_host>
+#    pull             - Instucts <remote_host> to pull an image.
+#                       NOTE: <command_arg> is *REQUIRED*:
+#                       - <command_arg> *MUST* be a valid container registry
+#                                       target
+#    run              - Instructs <remote_host> to start a container instance.
+#                       NOTE: <command_arg> is *REQUIRED*:
+#                       - <command_arg> *MUST* be a single argument.
+#                                       Encapsulate in quotes to glob
+#    stop             - Instructs <remote_host> to stop a container instance.
+#                       NOTE: <command_arg> is *REQUIRED*:
+#                       - <command_arg> *MUST* be a single argument that can be
+#                                       resolved as a valid container ID
+#                                       
+# test_env        - Built-in <command> that sets the host to be the TEST boxen
+# qa_env          - Built-in <command> that sets the host to be the QA boxen
+# prod_env        - Built-in <command> that sets the host to be the PROD boxen
+
+################################################################################
+# CONSTANTS
+################################################################################
+#
+
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
 TERM=vt100
 export TERM PATH
@@ -10,10 +80,42 @@ ERROR=1
 
 DOCKER_MGR_PORT=42000
 
+STDOUT_OFFSET="    "
+
+SCRIPT_NAME="${0}"
+
+USAGE_ENDLINE="\n${STDOUT_OFFSET}${STDOUT_OFFSET}${STDOUT_OFFSET}${STDOUT_OFFSET}"
+USAGE="${SCRIPT_NAME} <remote_host>:[<remote_port> <command> <command_arg> ${USAGE_ENDLINE}"
+USAGE="${USAGE}[ <remote_host>:[<remote_port> *OPTIONAL*] <The FQDN or IP address of a docker runtime host and optional port> ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[ <command>    <What to do.  Valid commands are [list|pull|run|stop]>                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     list     <List running containers on remote host>                                                        ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     pull     <Instucts remote host to pull an image>                                                         ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a valid container registry target                                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     run      <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     stop     <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     test_env <Built-in <command> that sets the host to be the TEST boxen>                                    ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     qa_env   <Built-in <command> that sets the host to be the QA boxen>                                      ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     prod_env <Built-in <command> that sets the host to be the PROD boxen>                                    ]"
+
+################################################################################
+# VARIABLES
+################################################################################
+#
+
 err_msg=""
 exit_code=${SUCCESS}
 
 docker_mgr_port=${DOCKER_MGR_PORT}
+
+################################################################################
+# MAIN
+################################################################################
+#
 
 # The "Process":
 # 1. Tell the docker container host to pull the new image name
@@ -33,7 +135,9 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 #
 #fi
 
-# Make sure ${1} is a valid target
+# WHAT: Make sure ${1} is a valid target
+# WHY:  Cannot proceed otherwise
+#
 if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
@@ -88,7 +192,9 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
 fi
 
-# Make sure we have at least one command
+# WHAT: Make sure we have at least one command
+# WHY:  Cannot proceed otherwise
+#
 if [ ${exit_code} -eq ${SUCCESS} ]; then
 
     if [ "${1}" != "" ]; then
@@ -152,7 +258,15 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
                                 #echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
-                                return_code=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
+                                #return_code=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
+                                cmd_output=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
+                                return_code=`echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}'`
+                                return_msg=`echo "${cmd_output}" | sed -e "s/^${return_code}:://g"`
+
+                                if [ "${return_msg}" != "" ]; then
+                                    echo "${STDOUT_OFFSET}INFO:  Response from docker container host \"${docker_host}\":"
+                                    echo -ne "           - '${return_msg}'\n"
+                                fi
 
                                 if [ ${return_code} -ne ${SUCCESS} ]; then
                                     err_msg="Remote command \"${command}\" failed on docker container host \"${docker_host}\""
@@ -171,6 +285,9 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
     
         done
     
+    else
+        err_msg="No arguments provided"
+        exit_code=${ERROR}
     fi
 
 fi
@@ -181,9 +298,14 @@ fi
 if [ ${exit_code} -ne ${SUCCESS} ]; then
 
     if [ "${err_msg}" != "" ]; then
-        echo "    ERROR:  ${err_msg} ... processing halted"
+        echo
+        echo -ne "${STDOUT_OFFSET}ERROR:  ${err_msg} ... processing halted\n"
+        echo
     fi
 
+    echo
+    echo -ne "${STDOUT_OFFSET}USAGE:  ${USAGE}\n"
+    echo
 fi
 
 exit ${exit_code}
