@@ -21,9 +21,9 @@
 ################################################################################
 #
 
-# NAME: docker-remote
+# NAME: docker_mgr
 # 
-# This script is meant to be invoked by xinetd, after which is processes
+# This script is meant to be invoked by xinetd, after which it processes
 # whatever string is was sent and matches the parsing with allowed operations
 # which are then executed.  Anything else produces an error.
 #
