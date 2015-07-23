@@ -27,6 +27,8 @@
 #                                        code syntax
 # 20150722     Jason W. Plummer          Added capture of any remote error
 #                                        messages.  Added this style template
+# 20150723     Jason W. Plummer          Added check to ensure return_code is
+#                                        set numerically
 
 ################################################################################
 # DESCRIPTION
@@ -262,6 +264,11 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                                 cmd_output=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
                                 return_code=`echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}'`
                                 return_msg=`echo "${cmd_output}" | sed -e "s/^${return_code}:://g"`
+
+                                if [ "${return_code}" = "" ]; then
+                                    echo "${STDOUT_OFFSET}INFO:  No return code received from docker container host \"${docker_host}\":"
+                                    return_code=${ERROR}
+                                fi
 
                                 if [ "${return_msg}" != "" ]; then
                                     echo "${STDOUT_OFFSET}INFO:  Response from docker container host \"${docker_host}\":"

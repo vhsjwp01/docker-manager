@@ -15,6 +15,7 @@
 #                                        read in at the suggestion of D. Todd
 # 20150722     Jason W. Plummer          Added echo of any error messages.  
 #                                        Added this style template
+# 20150722     Jason W. Plummer          Fixed grammar issues
 
 ################################################################################
 # DESCRIPTION
