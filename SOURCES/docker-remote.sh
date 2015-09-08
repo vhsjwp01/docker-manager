@@ -29,6 +29,7 @@
 #                                        messages.  Added this style template
 # 20150723     Jason W. Plummer          Added check to ensure return_code is
 #                                        set numerically
+# 20150908     Jason W. Plummer          Refactored backtick ops to $()
 
 ################################################################################
 # DESCRIPTION
@@ -162,12 +163,12 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
             ;;
   
             *)
-                remote_host=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g'`
-                remote_port=`echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g'`
+                remote_host=$(echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g')
+                remote_port=$(echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g')
                 shift
     
                 # Make sure host is resolvable
-                let valid_host=`host ${remote_host} 2> /dev/null | egrep -ic "domain name pointer|has address"`
+                let valid_host=$(host "${remote_host}" 2> /dev/null | egrep -ic "domain name pointer|has address")
     
                 if [ ${valid_host} -eq 0 ]; then
                     err_msg="Supplied docker container host \"${remote_host}\" is invalid"
@@ -204,7 +205,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
         # Rip through commands and assign them
         while (( "${#}" )); do
             command=""
-            key=`echo "${1}" | sed -e 's?\`??g'`
+            key=$(echo "${1}" | sed -e 's?\`??g')
     
             case "${key}" in
     
@@ -214,7 +215,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                 ;;
     
                 pull|run|stop)
-                    value=`echo "${2}" | sed -e 's?\`??g'`
+                    value=$(echo "${2}" | sed -e 's?\`??g')
     
                     if [ "${value}" = "" ]; then
                         err_msg="Remote command cannot be blank"
@@ -246,7 +247,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
                             echo "Docker images present on host: ${docker_host}"
                             echo "============================================="
-                            echo "${command}" | nc ${docker_host} ${docker_mgr_port}
+                            echo "${command}" | nc "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -254,16 +255,16 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     *)
                         # Replace spaces with spaceholders
-                        sanitized_command=`echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g'`
+                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g')
 
                         for docker_host in ${remote_host} ; do
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
-                                #echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}
-                                #return_code=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
-                                cmd_output=`echo "${sanitized_command}" | nc ${docker_host} ${docker_mgr_port}`
-                                return_code=`echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}'`
-                                return_msg=`echo "${cmd_output}" | sed -e "s/^${return_code}:://g"`
+                                #echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}"
+                                #return_code=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
+                                cmd_output=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
+                                return_code=$(echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}')
+                                return_msg=$(echo "${cmd_output}" | sed -e "s/^${return_code}:://g")
 
                                 if [ "${return_code}" = "" ]; then
                                     echo "${STDOUT_OFFSET}INFO:  No return code received from docker container host \"${docker_host}\":"
