@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.7.EL%{distro_major_ver}
+Release: 1.8.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -92,7 +92,7 @@ chmod 666 /tmp/MANIFEST.%{name}
 chown root:root %{install_sbin_dir}/%{mgr_real_name}
 chmod 750 %{install_sbin_dir}/%{mgr_real_name}
 chown root:root %{install_bin_dir}/%{remote_real_name}
-chmod 750 %{install_bin_dir}/%{remote_real_name}
+chmod 755 %{install_bin_dir}/%{remote_real_name}
 let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
 if [ ${docker_mgr_port_check} -eq 0 ]; then
     echo "%{xinetd_real_name}      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
