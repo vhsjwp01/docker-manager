@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.8.EL%{distro_major_ver}
+Release: 1.9.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -40,19 +40,24 @@ Requires: docker-io
 %define install_base /usr/local
 %define install_bin_dir %{install_base}/bin
 %define install_sbin_dir %{install_base}/sbin
+%define install_xinetd_dir /etc/xinetd.d
+%define install_initd_dir /etc/rc.d/init.d
 %define docker_mgr_port 42000
 %define remote_real_name docker-remote
 %define mgr_real_name docker_mgr
 %define xinetd_real_name docker-mgr
+%define docker_constart_real_name docker-constart
 
 Source0: ~/rpmbuild/SOURCES/docker-remote.sh
 Source1: ~/rpmbuild/SOURCES/docker_mgr.sh
 Source2: ~/rpmbuild/SOURCES/docker-mgr.xinetd
+Source3: ~/rpmbuild/SOURCES/docker-constart.sh
 
 %description
 Docker-manager is a server side daemon called docker_mgr launched via
 xinetd that responds to queries passed by a client side tool called
-docker-remote
+docker-remote.  It also includes an init script and command file that
+can restart currently running docker containers following a reboot
 
 %install
 rm -rf %{buildroot}
@@ -61,8 +66,10 @@ mkdir -p %{buildroot}%{install_bin_dir}
 cp %{SOURCE0} %{buildroot}%{install_bin_dir}/%{remote_real_name}
 mkdir -p %{buildroot}%{install_sbin_dir}
 cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
-mkdir -p %{buildroot}/etc/xinetd.d
-cp %{SOURCE2} %{buildroot}/etc/xinetd.d/%{xinetd_real_name}
+mkdir -p %{buildroot}%{install_xinetd_dir}
+cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
+mkdir -p %{buildroot}%{install_initd_dir}/
+cp %{SOURCE3} %{buildroot}%{install_initd_dir}/%{docker_constart_real_name}
 
 # Build packaging manifest
 rm -rf /tmp/MANIFEST.%{name}* > /dev/null 2>&1
@@ -98,8 +105,14 @@ if [ ${docker_mgr_port_check} -eq 0 ]; then
     echo "%{xinetd_real_name}      %{docker_mgr_port}/tcp               # Simple Remote Docker Manager" >> /etc/services
 fi
 chkconfig xinetd on
-chkconfig %{xinetd_real_name}  on
+chkconfig %{xinetd_real_name} on
 service xinetd restart > /dev/null 2>&1
+/bin/true
+chkconfig %{docker_constart_real_name} on
+/bin/true
+
+%preun
+chkconfig %{docker_constart_real_name} off > /dev/null 2>&1
 /bin/true
 
 %postun
