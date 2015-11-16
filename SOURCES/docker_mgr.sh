@@ -119,7 +119,7 @@ if [ -e "${SYSCONFIG_FILE}" ]; then
     rm -f "${SYSCONFIG_FILE}"
 fi
 
-currently_running_containers=$(docker ps | egrep -v "^CONTAINER" | awk '{print $2}')
+currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2}')
 
 if [ "${currently_running_containers}" != "" ]; then
     

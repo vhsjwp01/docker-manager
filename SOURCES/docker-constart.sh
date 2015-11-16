@@ -61,7 +61,34 @@ case "$1" in
         echo
     ;;
   
+    populate)
+        echo -ne "Populating \"${SYSCONFIG_FILE}\" ... "
+
+        if [ -e "${SYSCONFIG_FILE}" ]; then
+            rm -f "${SYSCONFIG_FILE}"
+        fi
+        
+        currently_running_containers=$(docker ps -f status=running| egrep -v "^CONTAINER" | awk '{print $2}')
+        
+        if [ "${currently_running_containers}" != "" ]; then
+            
+            for container in ${currently_running_containers} ; do
+                startup_command=$(egrep "docker run .* ${container}" /var/log/docker-mgr.log | tail -1 | sed -e 's?^.*"\(docker .*\)"$?\1?g')
+            
+                if [ "${startup_command}" != "" ]; then
+                    echo "${startup_command}" >> "${SYSCONFIG_FILE}"
+                fi
+            
+            done
+        
+        fi
+
+        success
+        echo
+    ;;
+
     status)
+        echo
         echo "Currently running containers:"
         echo "============================="
         docker ps -f status=running
