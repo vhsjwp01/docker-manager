@@ -132,6 +132,7 @@ if [ "${currently_running_containers}" != "" ]; then
     
     done
 
+    chmod 600 "${SYSCONFIG_FILE}"
 fi
 
 exit ${exit_code}

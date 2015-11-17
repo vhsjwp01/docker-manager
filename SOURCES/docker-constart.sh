@@ -21,7 +21,7 @@
 . /etc/rc.d/init.d/functions
 
 # Command file
-COMMAND_FILE="/etc/sysconfig/docker-constart"
+SYSCONFIG_FILE="/etc/sysconfig/docker-constart"
 
 # See how we were called.
 case "$1" in
@@ -29,14 +29,13 @@ case "$1" in
     start)
         echo "Starting persistent docker containers ... "
 
-        if [ -e "${COMMAND_FILE}" ]; then
-            docker_commands=$(awk '{print $0}' "${COMMAND_FILE}" | sed -e 's?\ ?:zzQc:?g')
+        if [ -e "${SYSCONFIG_FILE}" ]; then
+            docker_commands=$(awk '{print $0}' "${SYSCONFIG_FILE}" | sed -e 's?\ ?:zzQc:?g')
 
             for docker_command in ${docker_commands} ; do
                 this_docker_command=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g')
                 echo "  INFO:  Running docker command:"
                 echo "         ${this_docker_command}"
-                echo -ne "         ... "
                 eval "${this_docker_command}" > /dev/null 2>&1
 
                 if [ ${?} -eq 0 ]; then
@@ -92,7 +91,7 @@ case "$1" in
         echo "Currently running containers:"
         echo "============================="
         docker ps -f status=running
-        echo -ne "============================="
+        echo "============================="
         success
         echo
     ;;

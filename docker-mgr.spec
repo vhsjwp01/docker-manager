@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.10.EL%{distro_major_ver}
+Release: 1.11.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -109,6 +109,8 @@ chkconfig %{xinetd_real_name} on
 service xinetd restart > /dev/null 2>&1
 /bin/true
 chkconfig %{docker_constart_real_name} on
+/bin/true
+service %{docker_constart_real_name} populate
 /bin/true
 
 %preun
