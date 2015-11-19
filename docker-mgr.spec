@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.11.EL%{distro_major_ver}
+Release: 1.12.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -35,7 +35,7 @@ Requires: sed
 Requires: xinetd
 
 # These Requires can be found in EPEL
-Requires: docker-io
+Requires: /usr/bin/docker
 
 %define install_base /usr/local
 %define install_bin_dir %{install_base}/bin
