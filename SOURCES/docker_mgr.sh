@@ -19,6 +19,7 @@
 # 20151022     Jason W. Plummer          Added support to restart containers
 #                                        after a reboot
 # 20151116     Jason W. Plummer          Created docker-constart init script
+# 20151223     Jason W. Plummer          Added TMOUT variable to runtime args
 
 ################################################################################
 # DESCRIPTION
@@ -46,6 +47,8 @@ ERROR=1
 
 LOGFILE="/var/log/docker-mgr.log"
 SYSCONFIG_FILE="/etc/sysconfig/docker-constart"
+
+TMOUT=1800
 
 ################################################################################
 # VARIABLES
@@ -77,6 +80,12 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
             if [ "${value}" != "" ]; then
                 echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
+
+                # Add a TMOUT variable for interactive console access
+                if [ "${key}" = "run" ]; then
+                    value="-e 'TMOUT=${TMOUT}' ${value}"
+                fi
+
                 eval docker ${key} ${value} > /tmp/docker.$$.err 2>&1
                 exit_code=${?}
                 cmd_output=""
