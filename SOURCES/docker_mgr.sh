@@ -79,13 +79,13 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
         pull|run|stop)
 
             if [ "${value}" != "" ]; then
-                echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
 
                 # Add a TMOUT variable for interactive console access
                 if [ "${key}" = "run" ]; then
                     value="-e 'TMOUT=${TMOUT}' ${value}"
                 fi
 
+                echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
                 eval docker ${key} ${value} > /tmp/docker.$$.err 2>&1
                 exit_code=${?}
                 cmd_output=""
