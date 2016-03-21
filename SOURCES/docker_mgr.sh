@@ -20,6 +20,7 @@
 #                                        after a reboot
 # 20151116     Jason W. Plummer          Created docker-constart init script
 # 20151223     Jason W. Plummer          Added TMOUT variable to runtime args
+# 20160321     Jason W. Plummer          Added log_driver and restart params
 
 ################################################################################
 # DESCRIPTION
@@ -82,7 +83,31 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 # Add a TMOUT variable for interactive console access
                 if [ "${key}" = "run" ]; then
-                    value="-e 'TMOUT=${TMOUT}' ${value}"
+
+                    # Add TMOUT if not already set
+                    tmout_check=$(echo "${value}" | egrep -c "\-e TMOUT=")
+
+                    if [ ${tmout_check} -eq 0 ]; then
+                        value="-e 'TMOUT=${TMOUT}' ${value}"
+                    fi
+
+                    # Add persistence if not already set
+                    persistence_check=$(echo "${value}" | egrep -c "\-\-restart=")
+
+                    if [ ${persistence_check} -eq 0 ]; then
+                        value="--restart=on-failure:10 ${value}"
+                    fi
+
+                    # Add logging if not already set
+                    logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
+
+                    if [ ${logging_check} -eq 0 ]; then
+                        # vvv Uncomment this after upgrading to docker v1.9+ vvv
+                        #value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
+                        # vvv Comment this out after upgrading to docker v1.9+ vvv
+                        value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                    fi
+
                 fi
 
                 echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
