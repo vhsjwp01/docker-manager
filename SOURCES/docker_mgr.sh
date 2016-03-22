@@ -21,6 +21,7 @@
 # 20151116     Jason W. Plummer          Created docker-constart init script
 # 20151223     Jason W. Plummer          Added TMOUT variable to runtime args
 # 20160321     Jason W. Plummer          Added log_driver and restart params
+# 20160322     Jason W. Plummer          Added /etc/localtime mapping at runtime
 
 ################################################################################
 # DESCRIPTION
@@ -96,6 +97,13 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                     if [ ${persistence_check} -eq 0 ]; then
                         value="--restart=on-failure:10 ${value}"
+                    fi
+
+                    # Add localtime if not already set
+                    localtime_check=$(echo "${value}" | egrep -c "/etc/localtime:/etc/localtime")
+
+                    if [ ${localtime_check} -eq 0 ]; then
+                        value="-v /etc/localtime:/etc/local/time ${value}"
                     fi
 
                     # Add logging if not already set
