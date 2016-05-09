@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.16.EL%{distro_major_ver}
+Release: 1.17.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -95,6 +95,36 @@ done | sort -u >> /tmp/MANIFEST.%{name}
 rm -f /tmp/MANIFEST.%{name}.tmp
 chmod 666 /tmp/MANIFEST.%{name}
 
+# RPM provides four hooks for injecting commands into the installation and uninstallation sequences: 
+# two for installation and two for uninstallation. All hooks run on the target system and are generally 
+# sufficient for most housekeeping chores. These four hooks are:
+#
+# - All commands listed in the %pre hook run before your package is installed.
+# - Commands in the %post hook run after your package has been installed.
+# - The %preun hook runs before your package is removed from the system.
+# - Commands in the %postun hook run after your package is removed from the system.
+#
+# Hence, the order of operations during an upgrade is:
+# 1 - Run the %pre section of the RPM being installed.
+# 2 - Install the files that the RPM provides.
+# 3 - Run the %post section of the RPM.
+# 4 - Run the %preun of the old package.
+# 5 - Delete any old files not overwritten by the newer version. (This step deletes files that the new package does not require.)
+# 6 - Run the %postun hook of the old package.
+#
+# Steps 4 and 6 may seem a bit suspect, and for good reason: If you are upgrading a package, running 
+# the older version's uninstallation hooks could undo portions or all of steps 1 through 3. In fact, 
+# without conditions, the uninstallation hooks of the older version could destroy the newer version. 
+# To prevent unintentional clobbering, RPM passes each hook one argument, a flag. The value of the flag 
+# indicates which operation is being performed:
+#
+# - If the first argument to %pre is 1, the RPM operation is an initial installation. If the argument 
+#   to %pre is 2, the operation is an upgrade from an existing version to a new one.
+# - Similarly, the arguments to a %post are 1 and 2 for a new installation and upgrade, respectively. 
+#   (Again, %pre and %post aren't executed during an uninstallation.)
+# - If the first argument to %preun and %postun is 1, the action is an upgrade.
+# - If the first argument to %preun and %postun is 0, the action is uninstallation.
+
 %post
 chown root:root %{install_sbin_dir}/%{mgr_real_name}
 chmod 750 %{install_sbin_dir}/%{mgr_real_name}
@@ -114,19 +144,23 @@ service %{docker_constart_real_name} populate
 /bin/true
 
 %preun
-chkconfig %{docker_constart_real_name} off > /dev/null 2>&1
+if [ "${1}" = "0" ]; then
+    chkconfig %{docker_constart_real_name} off > /dev/null 2>&1
+fi
 /bin/true
 
 %postun
-chkconfig %{xinetd_real_name} off > /dev/null 2>&1
-/bin/true
-let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
-if [ ${docker_mgr_port_check} -gt 0 ]; then
-    cp -p /etc/services /tmp/services.$$
-    egrep -v "Simple Remote Docker Manager" /tmp/services.$$ > /etc/services
-    rm -f /tmp/services.$$
+if [ "${1}" = "0" ]; then
+    chkconfig %{xinetd_real_name} off > /dev/null 2>&1
+    /bin/true
+    let docker_mgr_port_check=`egrep "Simple Remote Docker Manager" /etc/services | wc -l | awk '{print $1}'`
+    if [ ${docker_mgr_port_check} -gt 0 ]; then
+        cp -p /etc/services /tmp/services.$$
+        egrep -v "Simple Remote Docker Manager" /tmp/services.$$ > /etc/services
+        rm -f /tmp/services.$$
+    fi
+    service xinetd restart > /dev/null 2>&1
 fi
-service xinetd restart > /dev/null 2>&1
 /bin/true
 
 %files -f /tmp/MANIFEST.%{name}
