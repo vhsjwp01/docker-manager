@@ -23,6 +23,9 @@
 # Command file
 SYSCONFIG_FILE="/etc/sysconfig/docker-constart"
 
+# Console Cred file
+CONSOLE_CREDS="/etc/docker_console.creds"
+
 # See how we were called.
 case "$1" in
 
@@ -33,13 +36,21 @@ case "$1" in
             docker_commands=$(awk '{print $0}' "${SYSCONFIG_FILE}" | sed -e 's?\ ?:zzQc:?g')
 
             for docker_command in ${docker_commands} ; do
-                this_docker_command=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g')
+                old_container_hash=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' '{print $2}')
+                this_docker_command=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' '{print $1}')
                 echo "  INFO:  Running docker command:"
                 echo "         ${this_docker_command}"
-                eval "${this_docker_command}" > /dev/null 2>&1
+                eval "new_container_fullhash=\$(${this_docker_command})" > /dev/null 2>&1
 
                 if [ ${?} -eq 0 ]; then
                     success
+
+                    # Update container console access creds
+                    if [ -e "${CONSOLE_CREDS}" ]; then
+                        new_container_hash=$(echo -ne "${new_container_fullhash}" | cut -c 1-12)
+                        sed -i -e "s/:${old_container_hash}\$/:${new_container_hash}/g" "${CONSOLE_CREDS}"
+                    fi
+
                 else
                     failure
                 fi
@@ -67,15 +78,17 @@ case "$1" in
             rm -f "${SYSCONFIG_FILE}"
         fi
         
-        currently_running_containers=$(docker ps -f status=running| egrep -v "^CONTAINER" | awk '{print $2}')
+        currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2 "#" $1}')
         
         if [ "${currently_running_containers}" != "" ]; then
             
-            for container in ${currently_running_containers} ; do
+            for currently_running_container in ${currently_running_containers} ; do
+                container=$(echo "${currently_running_container}" | awk -F'#' '{print $1}')
+                container_hash=$(echo "${currently_running_container}" | awk -F'#' '{print $2}')
                 startup_command=$(egrep "docker run .* ${container}" /var/log/docker-mgr.log | tail -1 | sed -e 's?^.*"\(docker .*\)"$?\1?g')
             
                 if [ "${startup_command}" != "" ]; then
-                    echo "${startup_command}" >> "${SYSCONFIG_FILE}"
+                    echo "${startup_command}#${container_hash}" >> "${SYSCONFIG_FILE}"
                 fi
             
             done
