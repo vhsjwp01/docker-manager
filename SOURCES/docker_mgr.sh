@@ -22,6 +22,8 @@
 # 20151223     Jason W. Plummer          Added TMOUT variable to runtime args
 # 20160321     Jason W. Plummer          Added log_driver and restart params
 # 20160322     Jason W. Plummer          Added /etc/localtime mapping at runtime
+# 20160519     Jason W. Plummer          Added docker version checker to handle
+#                                        log tagging syntax
 
 ################################################################################
 # DESCRIPTION
@@ -110,10 +112,18 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
 
                     if [ ${logging_check} -eq 0 ]; then
-                        # vvv Uncomment this after upgrading to docker v1.9+ vvv
-                        #value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
-                        # vvv Comment this out after upgrading to docker v1.9+ vvv
-                        value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                        docker_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'.' '{print $1 "." $2}')
+
+                        let ver_check=$(echo "${docker_ver}">1.9 | bc 2> /dev/null)
+
+                        if [ ${ver_check} -gt 0 ]; then
+                            # New style log tagging supported after v1.9
+                            value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
+                        else
+                            # Old style log tagging supported up to v1.9
+                            value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                        fi
+
                     fi
 
                 fi
