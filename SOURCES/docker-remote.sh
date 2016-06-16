@@ -30,6 +30,7 @@
 # 20150723     Jason W. Plummer          Added check to ensure return_code is
 #                                        set numerically
 # 20150908     Jason W. Plummer          Refactored backtick ops to $()
+# 20160616     Jason W. Plummer          Set return_code comparison as string
 
 ################################################################################
 # DESCRIPTION
@@ -276,7 +277,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                                     echo -ne "           - '${return_msg}'\n"
                                 fi
 
-                                if [ ${return_code} -ne ${SUCCESS} ]; then
+                                if [ "${return_code}" != "${SUCCESS}" ]; then
                                     err_msg="Remote command \"${command}\" failed on docker container host \"${docker_host}\""
                                     exit_code=${ERROR}
                                 fi
