@@ -24,6 +24,8 @@
 # 20160322     Jason W. Plummer          Added /etc/localtime mapping at runtime
 # 20160519     Jason W. Plummer          Added docker version checker to handle
 #                                        log tagging syntax
+# 20160616     Jason W. Plummer          Added code to remove stopped named
+#                                        containers
 
 ################################################################################
 # DESCRIPTION
@@ -148,6 +150,30 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     done
 
                     rm /tmp/docker.$$.err
+                fi
+
+                # Remove named containers if they stopped successfully
+                if [ "${key}" = "stop" -a ${exit_code} -eq ${SUCCESS} ]; then
+                    eval docker rm ${value} > /tmp/docker.$$.err 2>&1
+                    exit_code=${?}
+
+                    if [ -e "/tmp/docker.$$.err" ]; then 
+                        raw_output=$(awk '{print $0}' /tmp/docker.$$.err | strings | sed -e 's/\[.*\]//g' -e 's/\ /:ZZqC:/g' | egrep -i "error")
+
+                        for raw_line in ${raw_output} ; do
+                            real_line=$(echo "${raw_line}" | sed -e 's/:ZZqC:/\ /g')
+
+                            if [ "${cmd_output}" = "" ]; then
+                                cmd_output="${real_line}"
+                            else
+                                cmd_output="${cmd_output}\n${real_line}"
+                            fi
+
+                        done
+
+                        rm /tmp/docker.$$.err
+                    fi
+
                 fi
 
                 echo "${exit_code}::${cmd_output}"
