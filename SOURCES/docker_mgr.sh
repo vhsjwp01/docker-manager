@@ -25,7 +25,8 @@
 # 20160519     Jason W. Plummer          Added docker version checker to handle
 #                                        log tagging syntax
 # 20160616     Jason W. Plummer          Added code to remove stopped named
-#                                        containers
+#                                        containers.  Added logging statement
+#                                        for same
 
 ################################################################################
 # DESCRIPTION
@@ -154,6 +155,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 # Remove named containers if they stopped successfully
                 if [ "${key}" = "stop" -a ${exit_code} -eq ${SUCCESS} ]; then
+                    echo "`date`: Running command \"docker rm ${value}\"" >> "${LOGFILE}"
                     eval docker rm ${value} > /tmp/docker.$$.err 2>&1
                     exit_code=${?}
 
