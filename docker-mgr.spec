@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.23.EL%{distro_major_ver}
+Release: 1.24.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root

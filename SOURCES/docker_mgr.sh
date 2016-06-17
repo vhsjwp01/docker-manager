@@ -117,7 +117,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ ${logging_check} -eq 0 ]; then
                         docker_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'.' '{print $1 "." $2}')
 
-                        let ver_check=$(echo "${docker_ver}">1.9 | bc 2> /dev/null)
+                        let ver_check=$(echo "${docker_ver}>1.9" | bc 2> /dev/null)
 
                         if [ ${ver_check} -gt 0 ]; then
                             # New style log tagging supported after v1.9
