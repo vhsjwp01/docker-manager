@@ -265,16 +265,18 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                                 #return_code=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
                                 cmd_output=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
                                 return_code=$(echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}')
-                                return_msg=$(echo "${cmd_output}" | sed -e "s/^${return_code}:://g")
 
                                 if [ "${return_code}" = "" ]; then
                                     echo "${STDOUT_OFFSET}INFO:  No return code received from docker container host \"${docker_host}\":"
                                     return_code=${ERROR}
-                                fi
+                                else
+                                    return_msg=$(echo "${cmd_output}" | sed -e "s/^${return_code}:://g")
 
-                                if [ "${return_msg}" != "" ]; then
-                                    echo "${STDOUT_OFFSET}INFO:  Response from docker container host \"${docker_host}\":"
-                                    echo -ne "           - '${return_msg}'\n"
+                                    if [ "${return_msg}" != "" ]; then
+                                        echo "${STDOUT_OFFSET}INFO:  Response from docker container host \"${docker_host}\":"
+                                        echo -ne "           - '${return_msg}'\n"
+                                    fi
+
                                 fi
 
                                 if [ "${return_code}" != "${SUCCESS}" ]; then
