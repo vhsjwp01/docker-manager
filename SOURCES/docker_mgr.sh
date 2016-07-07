@@ -28,6 +28,7 @@
 #                                        containers.  Added logging statement
 #                                        for same
 # 20160617     Jason W. Plummer          Code optimization for stop/rm ops
+# 20160707     Jason W. Plummer          Change syslog logging to use UDP
 
 ################################################################################
 # DESCRIPTION
@@ -122,10 +123,10 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                         if [ ${ver_check} -gt 0 ]; then
                             # New style log tagging supported after v1.9
-                            value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
+                            value="--log-driver=syslog --log-opt syslog-address=udp://log.ingramcontent.com:514 --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
                         else
                             # Old style log tagging supported up to v1.9
-                            value="--log-driver=syslog --log-opt syslog-address=tcp://log.ingramcontent.com:514 --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                            value="--log-driver=syslog --log-opt syslog-address=udp://log.ingramcontent.com:514 --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
                         fi
 
                     fi
