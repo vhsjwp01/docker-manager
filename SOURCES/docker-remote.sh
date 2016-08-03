@@ -10,7 +10,7 @@
 # Revision History
 #-------------------------------------------------------------------------------
 # 20150121     Jason W. Plummer          Original: A script to allow remote
-#                                        sanitized nteraction with a docker
+#                                        sanitized interaction with a docker
 #                                        runtime host
 # 20150127     Jason W. Plummer          Added command injection protection and
 #                                        fixed sed syntax error
@@ -31,6 +31,7 @@
 #                                        set numerically
 # 20150908     Jason W. Plummer          Refactored backtick ops to $()
 # 20160616     Jason W. Plummer          Set return_code comparison as string
+# 20160727     Jason W. Plummer          Added netcat TIMEOUT variable
 
 ################################################################################
 # DESCRIPTION
@@ -52,20 +53,31 @@
 # <remote_host>   - The FQDN or IP address of a docker runtime host
 # <remote_port>   - The port to communicate with on <remote_host> *OPTIONAL*
 # <command>       - What to do.  Valid commands are:
-#    list             - List running containers on <remote_host>
-#    pull             - Instucts <remote_host> to pull an image.
-#                       NOTE: <command_arg> is *REQUIRED*:
-#                       - <command_arg> *MUST* be a valid container registry
-#                                       target
-#    run              - Instructs <remote_host> to start a container instance.
-#                       NOTE: <command_arg> is *REQUIRED*:
-#                       - <command_arg> *MUST* be a single argument.
-#                                       Encapsulate in quotes to glob
-#    stop             - Instructs <remote_host> to stop a container instance.
-#                       NOTE: <command_arg> is *REQUIRED*:
-#                       - <command_arg> *MUST* be a single argument that can be
-#                                       resolved as a valid container ID
-#                                       
+#    images   <List resident images on remote host>                                                       
+#    inspect  <Instructs remote host to inspect a container instance>                                     
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
+#    list     <List running containers on remote host>                                                    
+#    listall  <List all containers on remote host, running or otherwise>                                  
+#    pull     <Instucts remote host to pull an image>                                                     
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a valid container registry target                             
+#    rm       <Instructs remote host to delete a container instance>                                      
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
+#    rmi      <Instructs remote host to delete an image>                                                  
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument that can be resolved as a valid image ID    
+#    run      <Instructs remote host to start a container instance>                                       
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob             
+#    status   <Instructs remote host report the status of a container instance>                           
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
+#    stop     <Instructs remote host to start a container instance>                                       
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
+#                                      
 # test_env        - Built-in <command> that sets the host to be the TEST boxen
 # qa_env          - Built-in <command> that sets the host to be the QA boxen
 # prod_env        - Built-in <command> that sets the host to be the PROD boxen
@@ -88,17 +100,34 @@ STDOUT_OFFSET="    "
 
 SCRIPT_NAME="${0}"
 
+# Default timeout interval is 8 hours (in seconds)
+TIMEOUT="28800"
+
 USAGE_ENDLINE="\n${STDOUT_OFFSET}${STDOUT_OFFSET}${STDOUT_OFFSET}${STDOUT_OFFSET}"
 USAGE="${SCRIPT_NAME} <remote_host>:[<remote_port> <command> <command_arg> ${USAGE_ENDLINE}"
 USAGE="${USAGE}[ <remote_host>:[<remote_port> *OPTIONAL*] <The FQDN or IP address of a docker runtime host and optional port> ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[ <command>    <What to do.  Valid commands are [list|pull|run|stop]>                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     images   <List resident images on remote host>                                                           ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     inspect  <Instructs remote host to inspect a container instance>                                         ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     list     <List running containers on remote host>                                                        ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     listall  <List all containers on remote host, running or otherwise>                                      ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     pull     <Instucts remote host to pull an image>                                                         ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a valid container registry target                                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     rm       <Instructs remote host to delete a container instance>                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     rmi      <Instructs remote host to delete an image>                                                      ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid image ID        ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     run      <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     status   <Instructs remote host report the status of a container instance>                               ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     stop     <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
@@ -210,12 +239,12 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
     
             case "${key}" in
     
-                list)
+                images|list|listall)
                     command="${key}"
                     shift
                 ;;
     
-                pull|run|stop)
+                inspect|pull|rm|rmi|run|status|stop)
                     value=$(echo "${2}" | sed -e 's?\`??g')
     
                     if [ "${value}" = "" ]; then
@@ -248,7 +277,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
                             echo "Docker images present on host: ${docker_host}"
                             echo "============================================="
-                            echo "${command}" | nc "${docker_host}" "${docker_mgr_port}"
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -261,9 +290,9 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
-                                #echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}"
-                                #return_code=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
-                                cmd_output=$(echo "${sanitized_command}" | nc "${docker_host}" "${docker_mgr_port}")
+                                #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                                #return_code=$(echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
+                                cmd_output=$(echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
                                 return_code=$(echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}')
 
                                 if [ "${return_code}" = "" ]; then
