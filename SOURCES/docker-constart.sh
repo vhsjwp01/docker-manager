@@ -234,15 +234,15 @@ case "$1" in
         
         if [ "${currently_running_containers}" != "" ]; then
             
-            for currently_running_container in ${currently_running_containers} ; do
-                container=$(echo "${currently_running_container}" | awk -F':__:' '{print $1}')
-                container_hash=$(echo "${currently_running_container}" | awk -F':__:' '{print $2}')
+            for running_container in ${currently_running_containers} ; do
+                image_name=$(echo "${running_container}" | awk -F':__:' '{print $1}')
+                container_id=$(echo "${running_container}" | awk -F':__:' '{print $2}')
                 startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.* Running command "docker?"docker?g' -e 's?^"??g' -e 's?"$??g')
-            
+        
                 if [ "${startup_command}" != "" ]; then
-                    echo "${startup_command}#${container_hash}" >> "${SYSCONFIG_FILE}"
+                    echo "${startup_command}#${container_id}" >> "${SYSCONFIG_FILE}"
                 fi
-            
+        
             done
         
         fi
