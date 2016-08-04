@@ -435,6 +435,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                                   ${ping_ipv4_test}               -gt 0    \
                                ]; then
                                ip a add ${this_ipv4_address}/${my_ipv4_netmask} dev ${my_ipv4_interface} >> ${err_file} 2>&1
+                            else
+                                echo "Ethernet IP ${this_ipv4_address}/${my_ipv4_netmask} cannot be validated" >> ${err_file}
+
                             fi
 
                         fi

@@ -54,6 +54,8 @@ case "$1" in
   
                 fi
 
+                value="${this_docker_command}"
+
                 #----------------------------------------
                 # CUSTOM IPv4 BLOCK - START
                 #----------------------------------------
