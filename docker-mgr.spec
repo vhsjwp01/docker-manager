@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.27.EL%{distro_major_ver}
+Release: 1.28.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -28,6 +28,7 @@ BuildArch: noarch
 #%endif
 
 # These Requires can be found in Base
+Requires: bc
 Requires: bind-utils
 Requires: gawk
 Requires: nc

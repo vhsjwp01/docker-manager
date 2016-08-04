@@ -71,7 +71,7 @@
 #    run      <Instructs remote host to start a container instance>                                       
 #                 NOTE: <command_arg> is *REQUIRED*:                                                      
 #                 - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob             
-#    status   <Instructs remote host report the status of a container instance>                           
+#    stats    <Instructs remote host report the status of a container instance>                           
 #                 NOTE: <command_arg> is *REQUIRED*:                                                      
 #                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
 #    stop     <Instructs remote host to start a container instance>                                       
@@ -125,7 +125,7 @@ USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument th
 USAGE="${USAGE}[     run      <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
-USAGE="${USAGE}[     status   <Instructs remote host report the status of a container instance>                               ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     stats    <Instructs remote host report the status of a container instance>                               ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     stop     <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
@@ -197,10 +197,12 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                 remote_port=$(echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g')
                 shift
     
-                # Make sure host is resolvable
-                let valid_host=$(host "${remote_host}" 2> /dev/null | egrep -ic "domain name pointer|has address")
+                # Make sure host is online
+                ping -c 2 "${remote_host}" > /dev/null 2>&1
+                let valid_host=${?}
+                #let valid_host=$(host "${remote_host}" 2> /dev/null | egrep -ic "domain name pointer|has address")
     
-                if [ ${valid_host} -eq 0 ]; then
+                if [ ${valid_host} -gt 0 ]; then
                     err_msg="Supplied docker container host \"${remote_host}\" is invalid"
                     exit_code=${ERROR}
                 else
@@ -244,7 +246,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                     shift
                 ;;
     
-                inspect|pull|rm|rmi|run|status|stop)
+                inspect|pull|rm|rmi|run|stats|stop)
                     value=$(echo "${2}" | sed -e 's?\`??g')
     
                     if [ "${value}" = "" ]; then
@@ -272,10 +274,54 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                 case ${command} in
 
+                    images)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Docker images on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
+                    inspect=*)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Inspection of docker container/image ${value} on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
                     list)
 
                         for docker_host in ${remote_host} ; do
-                            echo "Docker images present on host: ${docker_host}"
+                            echo "Docker containers running on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
+                    listall)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Docker containers present on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
+                    stats=*)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Status of docker container ${value} on host: ${docker_host}"
                             echo "============================================="
                             echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo

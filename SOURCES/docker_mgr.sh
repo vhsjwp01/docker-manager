@@ -31,7 +31,7 @@
 # 20160707     Jason W. Plummer          Change syslog logging to use UDP
 # 20160727     Jason W. Plummer          Added support for adding ethernet
 #                                        aliases, docker inspect, and docker
-#                                        status
+#                                        stats
 # 20160801     Jason W. Plummer          Added support for detecting and 
 #                                        removing named containers prior to
 #                                        running
@@ -99,22 +99,25 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
     case ${key} in
 
         images)
+            report_status="no"
             echo "`date`: Running command \"docker images\"" >> "${LOGFILE}"
-            docker images
+            docker images 2>> ${err_file}
+            exit_code=${?}
         ;;
 
         inspect)
 
             if [ "${value}" != "" ]; then
+                report_status="no"
 
-                # Make sure ${value} is a running container
-                let inspection_targets=$(for i in $(docker ps -qa) $(docker images -q) ; do echo "${i}" ; done | egrep -c "^${value}$")
+                # Make sure ${value} is valid container OR image
+                inspection_target=$(for i in $(docker ps -qa) $(docker images -q) ; do echo "${i}" ; done | egrep "^${value}$")
 
-                if [ ${inspection_targets} -gt 0 ]; then
+                if [ "${inspection_target}" != "" ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} > ${err_file} 2>&1
+                    eval docker ${key} ${value} 2>> ${err_file}
                 else
-                    echo "No such running container" > ${err_file}
+                    echo "No such running container" >> ${err_file}
                     false > /dev/null 2>&1
                 fi
 
@@ -124,20 +127,24 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
         ;;
 
         list)
+            report_status="no"
             echo "`date`: Running command \"docker ps -f status=running\"" >> "${LOGFILE}"
-            docker ps -f status=running
+            docker ps -f status=running 2>> ${err_file}
+            exit_code=${?}
         ;;
 
         listall)
+            report_status="no"
             echo "`date`: Running command \"docker ps -f status=running\"" >> "${LOGFILE}"
-            docker ps -a
+            docker ps -a 2>> ${err_file}
+            exit_code=${?}
         ;;
 
         pull)
 
             if [ "${value}" != "" ]; then
                 echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                eval docker ${key} ${value} > ${err_file} 2>&1
+                eval docker ${key} ${value} >> ${err_file} 2>&1
                 exit_code=${?}
             fi
 
@@ -152,9 +159,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 if [ ${stopped_container_check} -gt 0 ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} > ${err_file} 2>&1
+                    eval docker ${key} ${value} >> ${err_file} 2>&1
                 else
-                    echo "No such container" > ${err_file}
+                    echo "No such container" >> ${err_file}
                     false > /dev/null 2>&1
                 fi
 
@@ -172,9 +179,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 if [ ${image_check} -gt 0 ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} > ${err_file} 2>&1
+                    eval docker ${key} ${value} >> ${err_file} 2>&1
                 else
-                    echo "No such image" > ${err_file}
+                    echo "No such image" >> ${err_file}
                     false > /dev/null 2>&1
                 fi
 
@@ -188,7 +195,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
             if [ "${value}" != "" ]; then
 
                 # Setup some useful docker labels
-                icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]./ ) print $i } }')
+                icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
 
                 if [ "${icg_docker_build_check}" != "" ]; then
                     docker_labels=""
@@ -286,18 +293,24 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
 
                 if [ ${logging_check} -eq 0 ]; then
-                    docker_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'.' '{print $1 "." $2}')
+                    docker_major_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $1}')
+                    docker_minor_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $2}')
 
-                    let ver_check=$(echo "${docker_ver}>1.9" | bc 2> /dev/null)
+                    let major_ver_check=$(echo "${docker_major_ver}>=1" | bc 2> /dev/null)
+                    let minor_ver_check=$(echo "${docker_minor_ver}>9" | bc 2> /dev/null)
 
-                    if [ ${ver_check} -gt 0 ]; then
+                    if [ ${major_ver_check} -gt 0 ]; then
 
-                        # New style log tagging supported after v1.9
-                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\""
-                    else
+                        if [ ${minor_ver_check} -gt 0 ]; then
 
-                        # Old style log tagging supported up to v1.9
-                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                            # New style log tagging supported after v1.9
+                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                        else
+
+                            # Old style log tagging supported up to v1.9
+                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                        fi
+
                     fi
 
                 fi
@@ -322,12 +335,18 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 if [ ${custom_ip_check} -gt 0 ]; then
                     my_ipv4_address=$(host $(hostname) 2> /dev/null | egrep "has address" | awk '{print $NF}')
+
+                    # Check /etc/hosts
+                    if [ "${my_ipv4_address}" = "" ]; then
+                        my_ipv4_address=$(egrep "$(hostname)" /etc/hosts | awk '{print $1}')
+                    fi
+
                     my_ipv4_interfaces=$(ip addr show | egrep "^[0-9]*:" | awk '{print $2}' | sed -e 's?:$??g')
                     my_ipv4_interface=""
                     my_ipv4_netmask=""
 
                     for interface in ${my_ipv4_interfaces} ; do
-                        let iface_ip_match=$(ip addr show dev ${interface} | egrep -c "inet ${my_ipv4_address}")
+                        let iface_ip_match=$(ip addr show dev ${interface} | egrep -v "127\.0\.0\.1" | egrep -c "inet ${my_ipv4_address}")
 
                         if [ ${iface_ip_match} -gt 0 ]; then
                             my_ipv4_interface=${interface}
@@ -339,8 +358,8 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                     for arg in ${modified_value}; do
 
-                        # Ignore any references to our IPv4 address or the default of 0.0.0.0
-                        let port_forward_check=$(echo "${arg}" | egrep -v "\-p_0\.0\.0\.0:|\-p_${my_ipv4_address}:" | egrep -c "^\-p_")
+                        # Ignore any references to our IPv4 address, loopback,  or the default of 0.0.0.0
+                        let port_forward_check=$(echo "${arg}" | egrep -v "\-p_0\.0\.0\.0:|\-p_${my_ipv4_address}:\-p_127\.0\.0\.1:" | egrep -c "^\-p_")
 
                         if [ ${port_forward_check} -gt 0 ]; then
                             this_ipv4_address=$(echo "${arg}" | awk -F':' '{print $1}' | sed -e 's?^-p_??g')
@@ -358,31 +377,30 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                             let subnet_check_alignment=1
 
                             if [ "${this_ipv4_address}" != "" ]; then
-                                my_first_three_octets=$(echo "${my_ipv4_address}" | awk -F'.' '{print $1 "." $2 "." $3}')
-                                this_ipv4_first_three_octets=$(echo "${this_ipv4_address}" | awk -F'.' '{print $1 "." $2 "." $3}')
+                                my_broadcast=$(ipcalc -b ${my_ipv4_address}/${my_ipv4_netmask} 2> /dev/null)
+                                let my_octet_check=${?}
 
-                                if [ "${my_first_three_octets}" = "${this_ipv4_first_three_octets}" ]; then
+                                this_broadcast=$(ipcalc -b ${this_ipv4_address}/${my_ipv4_netmask} 2> /dev/null)
+                                let this_octet_check=${?}
+
+                                if [ ${my_octet_check} -eq 0 -a ${this_octet_check} -eq 0 -a "${my_broadcast}" = "${this_broadcast}" ]; then
                                     let subnet_check_alignment=0
                                 fi
 
                             fi
 
-                            # Make sure this IPv4 fourth octet isn't out of bounds
+                            # Make sure this IPv4 address isn't out of bounds
                             # A value of 0 == success
-                            let octet_out_of_bounds=1
+                            let ipv4_address_out_of_bounds=1
 
                             if [ "${this_ipv4_address}" != "" ]; then
-                                this_ipv4_fourth_octet=$(echo "${this_ipv4_address}" | awk -F'.' '{print $NF}')
-
-                                if [ ${this_ipv4_fourth_octet} -gt 0 -a ${this_ipv4_fourth_octet} -lt 255 ]; then
-                                    let octet_out_of_bounds=0
-                                fi
-
+                                ipcalc -c ${this_ipv4_address}/${my_ipv4_netmask} > /dev/null 2>&1
+                                let ipv4_address_out_of_bounds=${?}
                             fi
 
                             # Make sure this IPv4 address can be resolved
                             let hostname_in_dns=1
-                            let ping_ip_test=0
+                            let ping_ipv4_test=0
                             let ping_hostname_test=0
 
                             if [ "${this_ipv4_address}" != "" ]; then
@@ -394,12 +412,12 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                                     # Make sure this IPv4 hostname is offline
                                     # A value of > 0 == success
-                                    ping -c 5 ${this_ipv4_hostname} > /dev/null 2>&1
+                                    ping -c 3 ${this_ipv4_hostname} > /dev/null 2>&1
                                     let ping_hostname_test=${?}
                                 
                                     # Make sure this IPv4 address is offline
                                     # A value of > 0 == success
-                                    ping -c 5 ${this_ipv4_address} > /dev/null 2>&1
+                                    ping -c 3 ${this_ipv4_address} > /dev/null 2>&1
                                     let ping_ipv4_test=${?}
                                 fi
 
@@ -411,12 +429,12 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                                  "${this_ipv4_address}"           != "" -a \
                                   ${local_ipv4_address_collision} -eq 0 -a \
                                   ${subnet_check_alignment}       -eq 0 -a \
-                                  ${octet_out_of_bounds}          -eq 0 -a \
+                                  ${ipv4_address_out_of_bounds}   -eq 0 -a \
                                   ${hostname_in_dns}              -eq 0 -a \
                                   ${ping_hostname_test}           -gt 0 -a \
                                   ${ping_ipv4_test}               -gt 0    \
                                ]; then
-                               ip a add ${this_ipv4_address}/${my_ipv4_netmask} dev ${my_ipv4_interface} > ${err_file} 2>&1
+                               ip a add ${this_ipv4_address}/${my_ipv4_netmask} dev ${my_ipv4_interface} >> ${err_file} 2>&1
                             fi
 
                         fi
@@ -453,19 +471,30 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 
         ;;
 
-        status)
+        stats)
 
             if [ "${value}" != "" ]; then
+                report_status="no"
 
                 # Make sure ${value} is a running container
-                let inspection_targets=$(docker ps -f status=running | awk '{print $1}' | egrep -c "^${value}$")
+                let inspection_target=$(docker ps -f status=running | awk '{print $1}' | egrep -c "^${value}$")
 
-                if [ ${inspection_targets} -gt 0 ]; then
+                if [ ${inspection_target} -gt 0 ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} > ${err_file} 2>&1
-                else
-                    echo "No such running container" > ${err_file}
-                    false > /dev/null 2>&1
+                    let counter=0
+
+                    while [ ${counter} -lt 10 ] ; do
+
+                        if [ ${counter} -eq 0 ]; then
+                            docker ${key} --no-stream ${value}
+                        else
+                            docker ${key} --no-stream ${value} | egrep -v "^CONTAINER"
+                        fi
+
+                        sleep 1
+                        let counter=${counter}+1
+                    done
+
                 fi
 
                 exit_code=${?}
@@ -477,7 +506,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
             if [ "${value}" != "" ]; then
                 echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                eval docker ${key} ${value} > ${err_file} 2>&1
+                eval docker ${key} ${value} >> ${err_file} 2>&1
                 exit_code=${?}
 
                 # Remove containers if it stopped successfully
@@ -519,7 +548,10 @@ if [ -e "${err_file}" ]; then
     rm -f "${err_file}" > /dev/null 2>&1
 fi
 
-echo "${exit_code}::${cmd_output}"
+# Report status unless told otherwise
+if [ "${report_status}" != "no" ]; then
+    echo "${exit_code}::${cmd_output}"
+fi
 
 # Now update the list of running containers so they can survive restart
 if [ -e "${SYSCONFIG_FILE}" ]; then
@@ -533,7 +565,7 @@ if [ "${currently_running_containers}" != "" ]; then
     for running_container in ${currently_running_containers} ; do
         image_name=$(echo "${running_container}" | awk -F':__:' '{print $1}')
         container_id=$(echo "${running_container}" | awk -F':__:' '{print $2}')
-        startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log | tail -1 | sed -e 's?^.*"\(docker .*\)"$?\1?g')
+        startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.*"\(docker .*\)"$?\1?g')
     
         if [ "${startup_command}" != "" ]; then
             echo "${startup_command}#${container_id}" >> "${SYSCONFIG_FILE}"
@@ -541,7 +573,10 @@ if [ "${currently_running_containers}" != "" ]; then
     
     done
 
-    chmod 600 "${SYSCONFIG_FILE}"
+    if [ -e "${SYSCONFIG_FILE}" ]; then
+        chmod 600 "${SYSCONFIG_FILE}"
+    fi
+
 fi
 
 exit ${exit_code}
