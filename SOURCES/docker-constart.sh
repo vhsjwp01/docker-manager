@@ -230,14 +230,14 @@ case "$1" in
             rm -f "${SYSCONFIG_FILE}"
         fi
         
-        currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2 "#" $1}')
+        currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2 ":__:" $1}')
         
         if [ "${currently_running_containers}" != "" ]; then
             
             for currently_running_container in ${currently_running_containers} ; do
-                container=$(echo "${currently_running_container}" | awk -F'#' '{print $1}')
-                container_hash=$(echo "${currently_running_container}" | awk -F'#' '{print $2}')
-                startup_command=$(egrep "docker run .* ${container}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.*"\(docker .*\)"$?\1?g')
+                container=$(echo "${currently_running_container}" | awk -F':__:' '{print $1}')
+                container_hash=$(echo "${currently_running_container}" | awk -F':__:' '{print $2}')
+                startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.* Running command "docker?"docker?g' -e 's?^"??g' -e 's?"$??g')
             
                 if [ "${startup_command}" != "" ]; then
                     echo "${startup_command}#${container_hash}" >> "${SYSCONFIG_FILE}"
