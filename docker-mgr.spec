@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.32.EL%{distro_major_ver}
+Release: 1.33.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -151,16 +151,17 @@ if [ "%{distro_major_ver}" -lt 7 ]; then
     service %{docker_constart_real_name} populate
     /bin/true
 else
-    chmod 750 %{install_sbin_dir}/%{docker_constart_real_name}
-    install_target_file="/etc/rc.local"
     docker_constart_sysconfig_file="/etc/sysconfig/docker-constart"
     docker_constart_comment="# docker-constart hack"
+    install_target_file="/etc/rc.local"
+    chmod 750 "${install_target_file}"
+    chmod 750 "%{install_sbin_dir}/%{docker_constart_real_name}"
     let rc_local_check=$(egrep "${docker_constart_comment}" "${install_target_file}" | wc -l | awk '{print $1}')
     if [ ${rc_local_check} -eq 0 ]; then
-        echo "                                                                              ${docker_constart_comment}" >> "${install_target_file}"
-        echo "if [ -e \"${docker_constart_sysconfig_file}\" ]; then                         ${docker_constart_comment}" >> "${install_target_file}" 
-        echo "    nohup %{install_sbin_dir}/%{docker_constart_real_name} > /dev/null 2>&1 & ${docker_constart_comment}" >> "${install_target_file}" 
-        echo "fi                                                                            ${docker_constart_comment}" >> "${install_target_file}"
+        echo "${docker_constart_comment}"                                                                                     >> "${install_target_file}"
+        echo "if [ -e \"${docker_constart_sysconfig_file}\" ]; then                               ${docker_constart_comment}" >> "${install_target_file}" 
+        echo "    nohup %{install_sbin_dir}/%{docker_constart_real_name} start > /dev/null 2>&1 & ${docker_constart_comment}" >> "${install_target_file}" 
+        echo "fi                                                                                  ${docker_constart_comment}" >> "${install_target_file}"
     fi
     %{install_sbin_dir}/%{docker_constart_real_name} populate
     /bin/true
