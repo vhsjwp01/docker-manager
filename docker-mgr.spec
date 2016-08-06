@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.31.EL%{distro_major_ver}
+Release: 1.32.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -69,8 +69,13 @@ mkdir -p %{buildroot}%{install_sbin_dir}
 cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
 mkdir -p %{buildroot}%{install_xinetd_dir}
 cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
-mkdir -p %{buildroot}%{install_initd_dir}/
-cp %{SOURCE3} %{buildroot}%{install_initd_dir}/%{docker_constart_real_name}
+# Hack to make docker-constart work with systemd
+if [ "%{distro_major_ver}" -gt 6 ]; then
+    cp %{SOURCE3} %{buildroot}%{install_sbin_dir}/%{docker_constart_real_name}
+else
+    mkdir -p %{buildroot}%{install_initd_dir}/
+    cp %{SOURCE3} %{buildroot}%{install_initd_dir}/%{docker_constart_real_name}
+fi
 
 # Build packaging manifest
 rm -rf /tmp/MANIFEST.%{name}* > /dev/null 2>&1
@@ -139,16 +144,35 @@ chkconfig xinetd on
 chkconfig %{xinetd_real_name} on
 service xinetd restart > /dev/null 2>&1
 /bin/true
-chkconfig %{docker_constart_real_name} on
-/bin/true
-service %{docker_constart_real_name} populate
-/bin/true
+# Hack to make docker-constart work with systemd
+if [ "%{distro_major_ver}" -lt 7 ]; then
+    chkconfig %{docker_constart_real_name} on
+    /bin/true
+    service %{docker_constart_real_name} populate
+    /bin/true
+else
+    chmod 750 %{install_sbin_dir}/%{docker_constart_real_name}
+    install_target_file="/etc/rc.local"
+    docker_constart_sysconfig_file="/etc/sysconfig/docker-constart"
+    docker_constart_comment="# docker-constart hack"
+    let rc_local_check=$(egrep "${docker_constart_comment}" "${install_target_file}" | wc -l | awk '{print $1}')
+    if [ ${rc_local_check} -eq 0 ]; then
+        echo "                                                                              ${docker_constart_comment}" >> "${install_target_file}"
+        echo "if [ -e \"${docker_constart_sysconfig_file}\" ]; then                         ${docker_constart_comment}" >> "${install_target_file}" 
+        echo "    nohup %{install_sbin_dir}/%{docker_constart_real_name} > /dev/null 2>&1 & ${docker_constart_comment}" >> "${install_target_file}" 
+        echo "fi                                                                            ${docker_constart_comment}" >> "${install_target_file}"
+    fi
+    %{install_sbin_dir}/%{docker_constart_real_name} populate
+    /bin/true
+fi
 
 %preun
-if [ "${1}" = "0" ]; then
-    chkconfig %{docker_constart_real_name} off > /dev/null 2>&1
+if [ "%{distro_major_ver}" -lt 7 ]; then
+    if [ "${1}" = "0" ]; then
+        chkconfig %{docker_constart_real_name} off > /dev/null 2>&1
+    fi
+    /bin/true
 fi
-/bin/true
 
 %postun
 if [ "${1}" = "0" ]; then
@@ -161,6 +185,10 @@ if [ "${1}" = "0" ]; then
         rm -f /tmp/services.$$
     fi
     service xinetd restart > /dev/null 2>&1
+    if [ "%{distro_major_ver}" -gt 6 ]; then
+        cp -p /etc/rc.local /tmp/rc.local.$$
+        egrep -v "# docker-constart hack" /tmp/rc.local.$$ > /etc/rc.local
+    fi
 fi
 /bin/true
 

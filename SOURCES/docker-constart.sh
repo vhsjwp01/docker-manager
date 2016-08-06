@@ -56,6 +56,9 @@ case "$1" in
 
                 value="${this_docker_command}"
 
+                err_file="/tmp/docker.$$.err"
+                rm -f "${err_file}" > /dev/null 2>&1
+
                 #----------------------------------------
                 # CUSTOM IPv4 BLOCK - START
                 #----------------------------------------
@@ -199,9 +202,16 @@ case "$1" in
                 if [ ${?} -eq 0 ]; then
                     success
 
-                    # Update container console access creds
+                    # Compute 12 character container hash variant
+                    new_container_hash=$(echo -ne "${new_container_fullhash}" | cut -c 1-12)
+
+                    # Update ${SYSCONFIG_FILE}
+                    if [ -e "${SYSCONFIG_FILE}" ]; then
+                        sed -i -e "s/#${old_container_hash}\$/#${new_container_hash}/g" "${SYSCONFIG_FILE}"
+                    fi
+
+                    # Update ${CONSOLE_CREDS}
                     if [ -e "${CONSOLE_CREDS}" ]; then
-                        new_container_hash=$(echo -ne "${new_container_fullhash}" | cut -c 1-12)
                         sed -i -e "s/:${old_container_hash}\$/:${new_container_hash}/g" "${CONSOLE_CREDS}"
                     fi
 
