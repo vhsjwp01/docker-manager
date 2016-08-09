@@ -168,6 +168,17 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 #
 #fi
 
+# WHAT: See if netcat requires units for timeout:
+# WHY:  Matters later
+if [ ${exit_code} -eq ${SUCCESS} ]; then
+    let timeout_unit_check=$(${my_nc} -w ${TIMEOUT}s 2>&1 | egrep -c "timeout cannot be negative")
+
+    if [ ${timeout_unit_check} -eq 0 ]; then
+        TIMEOUT="${TIMEOUT}s"
+    fi
+
+fi
+
 # WHAT: Make sure ${1} is a valid target
 # WHY:  Cannot proceed otherwise
 #
