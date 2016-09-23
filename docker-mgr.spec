@@ -9,7 +9,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.35.EL%{distro_major_ver}
+Release: 1.36.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
@@ -48,11 +48,13 @@ Requires: /usr/bin/docker
 %define mgr_real_name docker_mgr
 %define xinetd_real_name docker-mgr
 %define docker_constart_real_name docker-constart
+%define docker_tidy_real_name docker-tidy
 
 Source0: ~/rpmbuild/SOURCES/docker-remote.sh
 Source1: ~/rpmbuild/SOURCES/docker_mgr.sh
 Source2: ~/rpmbuild/SOURCES/docker-mgr.xinetd
 Source3: ~/rpmbuild/SOURCES/docker-constart.sh
+Source4: ~/rpmbuild/SOURCES/docker-tidy.sh
 
 %description
 Docker-manager is a server side daemon called docker_mgr launched via
@@ -67,6 +69,7 @@ mkdir -p %{buildroot}%{install_bin_dir}
 cp %{SOURCE0} %{buildroot}%{install_bin_dir}/%{remote_real_name}
 mkdir -p %{buildroot}%{install_sbin_dir}
 cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
+cp %{SOURCE4} %{buildroot}%{install_sbin_dir}/%{docker_tidy_real_name}
 mkdir -p %{buildroot}%{install_xinetd_dir}
 cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
 # Hack to make docker-constart work with systemd
@@ -132,6 +135,12 @@ chmod 666 /tmp/MANIFEST.%{name}
 # - If the first argument to %preun and %postun is 0, the action is uninstallation.
 
 %post
+if [ "${1}" = "1" ]; then
+    echo "# Docker Runtime Container Cleansing" >> /var/spool/cron/root
+    echo "30 0 * * 7 ( %{install_sbin_dir}/%{docker_tidy_real_name} 2>&1 | logger -t \"Docker Runtime Container Cleansing\" )" >> /var/spool/cron/root
+fi
+service crontab restart > /dev/null 2>&1
+/bin/true
 chown root:root %{install_sbin_dir}/%{mgr_real_name}
 chmod 750 %{install_sbin_dir}/%{mgr_real_name}
 chown root:root %{install_bin_dir}/%{remote_real_name}
@@ -176,6 +185,11 @@ if [ "%{distro_major_ver}" -lt 7 ]; then
 fi
 
 %postun
+if [ "${1}" = "0" ]; then
+    sed -i -e "/Docker Runtime Container Cleansing/d" /var/spool/cron/root
+fi
+service crontab restart > /dev/null 2>&1
+/bin/true
 if [ "${1}" = "0" ]; then
     chkconfig %{xinetd_real_name} off > /dev/null 2>&1
     /bin/true
