@@ -40,6 +40,8 @@
 #                                        during docker-constart execution after
 #                                        reboot
 # 20160802     Jason W. Plummer          Added support for dynamic labeling
+# 20161003     Jason W. Plummer          Turned ingramcontent.com base label
+#                                        into a variable
 
 ################################################################################
 # DESCRIPTION
@@ -80,6 +82,8 @@ exit_code=${ERROR}
 syslog_port="514"
 syslog_server="log.ingramcontent.com"
 syslog_transport="udp"
+
+docker_base_label="com.ingramcontent"
 
 ################################################################################
 # MAIN
@@ -211,9 +215,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ "${label_container_name}" != "" ]; then
 
                         if [ "${docker_labels}" = "" ]; then
-                            docker_labels="--label ingramcontent.com.container.name=${label_container_name}"
+                            docker_labels="--label ${docker_base_label}.container.name=${label_container_name}"
                         else
-                            docker_labels="${docker_labels} --label ingramcontent.com.container.name=${label_container_name}"
+                            docker_labels="${docker_labels} --label ${docker_base_label}.container.name=${label_container_name}"
                         fi
 
                     fi
@@ -222,9 +226,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ "${label_container_environment}" != "" ]; then
 
                         if [ "${docker_labels}" = "" ]; then
-                            docker_labels="--label ingramcontent.com.container.environment=${label_container_environment}"
+                            docker_labels="--label ${docker_base_label}.container.environment=${label_container_environment}"
                         else
-                            docker_labels="${docker_labels} --label ingramcontent.com.container.environment=${label_container_environment}"
+                            docker_labels="${docker_labels} --label ${docker_base_label}.container.environment=${label_container_environment}"
                         fi
 
                     fi
@@ -233,9 +237,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ "${label_container_namespace}" != "" ]; then
 
                         if [ "${docker_labels}" = "" ]; then
-                            docker_labels="--label ingramcontent.com.container.namespace=${label_container_namespace}"
+                            docker_labels="--label ${docker_base_label}.container.namespace=${label_container_namespace}"
                         else
-                            docker_labels="${docker_labels} --label ingramcontent.com.container.namespace=${label_container_namespace}"
+                            docker_labels="${docker_labels} --label ${docker_base_label}.container.namespace=${label_container_namespace}"
                         fi
 
                     fi
@@ -244,9 +248,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ "${label_container_build_date}" != "" ]; then
 
                         if [ "${docker_labels}" = "" ]; then
-                            docker_labels="--label ingramcontent.com.container.build_date=${label_container_build_date}"
+                            docker_labels="--label ${docker_base_label}.container.build_date=${label_container_build_date}"
                         else
-                            docker_labels="${docker_labels} --label ingramcontent.com.container.build_date=${label_container_build_date}"
+                            docker_labels="${docker_labels} --label ${docker_base_label}.container.build_date=${label_container_build_date}"
                         fi
 
                     fi
@@ -255,9 +259,9 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                     if [ "${label_container_commit_hash}" != "" ]; then
 
                         if [ "${docker_labels}" = "" ]; then
-                            docker_labels="--label ingramcontent.com.container.commit_hash=${label_container_commit_hash}"
+                            docker_labels="--label ${docker_base_label}.container.commit_hash=${label_container_commit_hash}"
                         else
-                            docker_labels="${docker_labels} --label ingramcontent.com.container.commit_hash=${label_container_commit_hash}"
+                            docker_labels="${docker_labels} --label ${docker_base_label}.container.commit_hash=${label_container_commit_hash}"
                         fi
 
                     fi
