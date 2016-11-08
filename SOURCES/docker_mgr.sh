@@ -42,6 +42,8 @@
 # 20160802     Jason W. Plummer          Added support for dynamic labeling
 # 20161003     Jason W. Plummer          Turned ingramcontent.com base label
 #                                        into a variable
+# 20161107     Jason W. Plummer          Fixed /etc/localtime overlay.  Started
+#                                        adding swarm support
 
 ################################################################################
 # DESCRIPTION
@@ -290,7 +292,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 localtime_check=$(echo "${value}" | egrep -c "/etc/localtime:/etc/localtime")
 
                 if [ ${localtime_check} -eq 0 ]; then
-                    value="-v /etc/localtime:/etc/local/time ${value}"
+                    value="-v /etc/localtime:/etc/localtime ${value}"
                 fi
 
                 # Add logging if not already set
@@ -438,7 +440,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                                   ${ping_hostname_test}           -gt 0 -a \
                                   ${ping_ipv4_test}               -gt 0    \
                                ]; then
-                               ip a add ${this_ipv4_address}/${my_ipv4_netmask} dev ${my_ipv4_interface} >> ${err_file} 2>&1
+                                ip a add ${this_ipv4_address}/${my_ipv4_netmask} dev ${my_ipv4_interface} >> ${err_file} 2>&1
                             else
                                 echo "Ethernet IP ${this_ipv4_address}/${my_ipv4_netmask} cannot be validated" >> ${err_file}
 
@@ -476,6 +478,176 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 exit_code=${?}
             fi
                 
+        ;;
+
+        network)
+
+            if [ "${value}" != "" ]; then
+
+                # Figure out what SWARM action we have been asked to do
+                network_action=$(echo "${value}" | awk '{print $1}')
+
+                case ${network_action} in
+
+                    connect|create|disconnect|inspect|ls|rm)
+                        echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
+                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        exit_code=${?}
+                    ;;
+
+                esac 
+
+            fi
+
+        ;;
+
+        service)
+
+            if [ "${value}" != "" ]; then
+
+                # Figure out what SWARM action we have been asked to do
+                service_action=$(echo "${value}" | awk '{print $1}')
+
+                case ${service_action} in
+
+                    create)
+
+                        # Setup some useful docker labels
+                        icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
+
+                        if [ "${icg_docker_build_check}" != "" ]; then
+                            docker_labels=""
+
+                            label_container_name=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
+                            label_container_tag=$(echo "${icg_docker_build_check}" | awk -F':' '{print $NF}')
+                            label_container_namespace=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $(NF-1)}' | egrep -v "lvicdockregp")
+                            label_container_build_date=$(echo "${label_container_tag}" | awk -F'.' '{print $1}')
+                            label_container_environment=$(echo "${label_container_tag}" | awk -F'.' '{print $2}')
+                            label_container_commit_hash=$(echo "${label_container_tag}" | awk -F'.' '{print $3}')
+
+                            # Add in container name if defined - this matches git project
+                            if [ "${label_container_name}" != "" ]; then
+
+                                if [ "${docker_labels}" = "" ]; then
+                                    docker_labels="--label ${docker_base_label}.container.name=${label_container_name}"
+                                else
+                                    docker_labels="${docker_labels} --label ${docker_base_label}.container.name=${label_container_name}"
+                                fi
+
+                            fi
+
+                            # Add in container environment if defined - this matches git branch
+                            if [ "${label_container_environment}" != "" ]; then
+
+                                if [ "${docker_labels}" = "" ]; then
+                                    docker_labels="--label ${docker_base_label}.container.environment=${label_container_environment}"
+                                else
+                                    docker_labels="${docker_labels} --label ${docker_base_label}.container.environment=${label_container_environment}"
+                                fi
+
+                            fi
+
+                            # Add in namespace if defined
+                            if [ "${label_container_namespace}" != "" ]; then
+
+                                if [ "${docker_labels}" = "" ]; then
+                                    docker_labels="--label ${docker_base_label}.container.namespace=${label_container_namespace}"
+                                else
+                                    docker_labels="${docker_labels} --label ${docker_base_label}.container.namespace=${label_container_namespace}"
+                                fi
+
+                            fi
+
+                            # Add in build date if defined
+                            if [ "${label_container_build_date}" != "" ]; then
+
+                                if [ "${docker_labels}" = "" ]; then
+                                    docker_labels="--label ${docker_base_label}.container.build_date=${label_container_build_date}"
+                                else
+                                    docker_labels="${docker_labels} --label ${docker_base_label}.container.build_date=${label_container_build_date}"
+                                fi
+
+                            fi
+
+                            # Add in commit hash if defined
+                            if [ "${label_container_commit_hash}" != "" ]; then
+
+                                if [ "${docker_labels}" = "" ]; then
+                                    docker_labels="--label ${docker_base_label}.container.commit_hash=${label_container_commit_hash}"
+                                else
+                                    docker_labels="${docker_labels} --label ${docker_base_label}.container.commit_hash=${label_container_commit_hash}"
+                                fi
+
+                            fi
+
+                        fi
+
+                        if [ "${docker_labels}" != "" ]; then
+                            value="${docker_labels} ${value}"
+                        fi
+
+                        # Add TMOUT if not already set
+                        tmout_check=$(echo "${value}" | egrep -c "\-e TMOUT=")
+
+                        if [ ${tmout_check} -eq 0 ]; then
+                            value="-e 'TMOUT=${TMOUT}' ${value}"
+                        fi
+
+                        # Add persistence if not already set
+                        persistence_check=$(echo "${value}" | egrep -c "\-\-restart=")
+
+                        if [ ${persistence_check} -eq 0 ]; then
+                            value="--restart=on-failure:10 ${value}"
+                        fi
+
+                        # Add localtime if not already set
+                        localtime_check=$(echo "${value}" | egrep -c "/etc/localtime:/etc/localtime")
+
+                        if [ ${localtime_check} -eq 0 ]; then
+                            value="-v /etc/localtime:/etc/localtime ${value}"
+                        fi
+
+                        # Add logging if not already set
+                        logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
+
+                        if [ ${logging_check} -eq 0 ]; then
+                            docker_major_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $1}')
+                            docker_minor_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $2}')
+
+                            let major_ver_check=$(echo "${docker_major_ver}>=1" | bc 2> /dev/null)
+                            let minor_ver_check=$(echo "${docker_minor_ver}>9" | bc 2> /dev/null)
+
+                            if [ ${major_ver_check} -gt 0 ]; then
+
+                                if [ ${minor_ver_check} -gt 0 ]; then
+
+                                    # New style log tagging supported after v1.9
+                                    value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                                else
+
+                                    # Old style log tagging supported up to v1.9
+                                    value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                                fi
+
+                            fi
+
+                        fi
+
+                        echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
+                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        exit_code=${?}
+                    ;;
+
+                    inspect|ps|ls|rm|scale|update)
+                        echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
+                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        exit_code=${?}
+                    ;;
+
+                esac
+
+            fi
+
         ;;
 
         stats)

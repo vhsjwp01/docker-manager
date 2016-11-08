@@ -32,6 +32,7 @@
 # 20150908     Jason W. Plummer          Refactored backtick ops to $()
 # 20160616     Jason W. Plummer          Set return_code comparison as string
 # 20160727     Jason W. Plummer          Added netcat TIMEOUT variable
+# 20161108     Jason W. Plummer          Added swarm support
 
 ################################################################################
 # DESCRIPTION
@@ -77,6 +78,12 @@
 #    stop     <Instructs remote host to start a container instance>                                       
 #                 NOTE: <command_arg> is *REQUIRED*:                                                      
 #                 - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID
+#    service  <Instructs remote host to start a container instance via SWARM>                                       
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob             
+#    network  <Instructs remote host to start a container network instance via SWARM>                                       
+#                 NOTE: <command_arg> is *REQUIRED*:                                                      
+#                 - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob             
 #                                      
 # test_env        - Built-in <command> that sets the host to be the TEST boxen
 # qa_env          - Built-in <command> that sets the host to be the QA boxen
@@ -131,6 +138,12 @@ USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument th
 USAGE="${USAGE}[     stop     <Instructs remote host to start a container instance>                                           ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument that can be resolved as a valid container ID    ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     service  <Instructs remote host to start a container instance via SWARM>                                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[     network  <Instructs remote host to start a container network instance via SWARM>                         ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     test_env <Built-in <command> that sets the host to be the TEST boxen>                                    ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     qa_env   <Built-in <command> that sets the host to be the QA boxen>                                      ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[     prod_env <Built-in <command> that sets the host to be the PROD boxen>                                    ]"
@@ -189,17 +202,22 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
         case "${1}" in
 
             test_env)
-                remote_host="lvicdockert01.ingramcontent.com lvicdockert02.ingramcontent.com"
+                remote_host="lvicdockert01.ingramcontent.com lvicdockert02.ingramcontent.com lvicdockert03.ingramcontent.com"
                 shift
             ;;
 
             qa_env)
-                remote_host="lvicdockerq01.ingramcontent.com lvicdockerq02.ingramcontent.com"
+                remote_host="lvicdockerq01.ingramcontent.com lvicdockerq02.ingramcontent.com lvicdockerq03.ingramcontent.com"
                 shift
             ;;
 
             prod_env)
                 remote_host="lvicdockerp01.ingramcontent.com lvicdockerp02.ingramcontent.com"
+                shift
+            ;;
+
+            dmz_env)
+                remote_host="lvicdockerp03.ingramcontent.com lvicdockerp04.ingramcontent.com"
                 shift
             ;;
   
@@ -257,7 +275,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                     shift
                 ;;
     
-                inspect|pull|rm|rmi|run|stats|stop)
+                inspect|pull|rm|rmi|run|stats|stop|service|network)
                     value=$(echo "${2}" | sed -e 's?\`??g')
     
                     if [ "${value}" = "" ]; then
