@@ -347,6 +347,28 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     ;;
 
+                    network=*)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Output of docker network command on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
+                    service=*)
+
+                        for docker_host in ${remote_host} ; do
+                            echo "Output of docker service command on host: ${docker_host}"
+                            echo "============================================="
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
+
                     stats=*)
 
                         for docker_host in ${remote_host} ; do
