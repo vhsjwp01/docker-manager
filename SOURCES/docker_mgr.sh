@@ -44,6 +44,8 @@
 #                                        into a variable
 # 20161107     Jason W. Plummer          Fixed /etc/localtime overlay.  Started
 #                                        adding swarm support
+# 20161110     Jason W. Plummer          Added support for missing output on
+#                                        rm, rmi, and swarm commands
 
 ################################################################################
 # DESCRIPTION
@@ -165,7 +167,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 if [ ${stopped_container_check} -gt 0 ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} >> ${err_file} 2>&1
+                    eval docker ${key} ${value} 2>> ${err_file}
                 else
                     echo "No such container" >> ${err_file}
                     false > /dev/null 2>&1
@@ -185,7 +187,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 if [ ${image_check} -gt 0 ]; then
                     echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                    eval docker ${key} ${value} >> ${err_file} 2>&1
+                    eval docker ${key} ${value} 2>> ${err_file}
                 else
                     echo "No such image" >> ${err_file}
                     false > /dev/null 2>&1
@@ -491,7 +493,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                     connect|create|disconnect|inspect|ls|rm)
                         echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        eval docker ${key} ${value} 2>> ${err_file}
                         exit_code=${?}
                     ;;
 
@@ -640,7 +642,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                     inspect|ps|ls|rm|scale|update)
                         echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        eval docker ${key} ${value} 2>> ${err_file}
                         exit_code=${?}
                     ;;
 
