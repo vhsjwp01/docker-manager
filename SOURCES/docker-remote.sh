@@ -352,7 +352,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
                             echo "Output of docker network command on host: ${docker_host}"
                             echo "============================================="
-                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
                             echo
                         done
 
@@ -363,7 +363,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                         for docker_host in ${remote_host} ; do
                             echo "Output of docker service command on host: ${docker_host}"
                             echo "============================================="
-                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
                             echo
                         done
 
