@@ -46,6 +46,7 @@
 #                                        adding swarm support
 # 20161110     Jason W. Plummer          Added support for missing output on
 #                                        rm, rmi, and swarm commands
+# 20170104     Jason W. Plummer          Fixed issues with docker service create
 
 ################################################################################
 # DESCRIPTION
@@ -513,6 +514,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 case ${service_action} in
 
                     create)
+                        value=$(echo "${value}" | sed -e 's/^create //g')
 
                         # Setup some useful docker labels
                         icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
@@ -595,18 +597,11 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                             value="-e 'TMOUT=${TMOUT}' ${value}"
                         fi
 
-                        # Add persistence if not already set
-                        persistence_check=$(echo "${value}" | egrep -c "\-\-restart=")
-
-                        if [ ${persistence_check} -eq 0 ]; then
-                            value="--restart=on-failure:10 ${value}"
-                        fi
-
                         # Add localtime if not already set
-                        localtime_check=$(echo "${value}" | egrep -c "/etc/localtime:/etc/localtime")
+                        localtime_check=$(echo "${value}" | egrep -c "target=/etc/localtime,source=/etc/localtime")
 
                         if [ ${localtime_check} -eq 0 ]; then
-                            value="-v /etc/localtime:/etc/localtime ${value}"
+                            value="--mount target=/etc/localtime,source=/etc/localtime ${value}"
                         fi
 
                         # Add logging if not already set
@@ -636,7 +631,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                         fi
 
                         echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
-                        eval docker ${key} ${value} >> ${err_file} 2>&1
+                        eval docker ${key} ${service_action} ${value} >> ${err_file} 2>&1
                         exit_code=${?}
                     ;;
 
@@ -735,27 +730,31 @@ if [ "${report_status}" != "no" ]; then
 fi
 
 # Now update the list of running containers so they can survive restart
-if [ -e "${SYSCONFIG_FILE}" ]; then
-    rm -f "${SYSCONFIG_FILE}"
-fi
-
-currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2 ":__:" $1}')
-
-if [ "${currently_running_containers}" != "" ]; then
-    
-    for running_container in ${currently_running_containers} ; do
-        image_name=$(echo "${running_container}" | awk -F':__:' '{print $1}')
-        container_id=$(echo "${running_container}" | awk -F':__:' '{print $2}')
-        startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.* Running command "docker?"docker?g' -e 's?^"??g' -e 's?"$??g')
-    
-        if [ "${startup_command}" != "" ]; then
-            echo "${startup_command}#${container_id}" >> "${SYSCONFIG_FILE}"
-        fi
-    
-    done
+if [ "${key}" != "service}" ]; then
 
     if [ -e "${SYSCONFIG_FILE}" ]; then
-        chmod 600 "${SYSCONFIG_FILE}"
+        rm -f "${SYSCONFIG_FILE}"
+    fi
+    
+    currently_running_containers=$(docker ps -f status=running | egrep -v "^CONTAINER" | awk '{print $2 ":__:" $1}')
+    
+    if [ "${currently_running_containers}" != "" ]; then
+        
+        for running_container in ${currently_running_containers} ; do
+            image_name=$(echo "${running_container}" | awk -F':__:' '{print $1}')
+            container_id=$(echo "${running_container}" | awk -F':__:' '{print $2}')
+            startup_command=$(egrep "docker run .* ${image_name}" /var/log/docker-mgr.log 2> /dev/null | tail -1 | sed -e 's?^.* Running command "docker?"docker?g' -e 's?^"??g' -e 's?"$??g')
+        
+            if [ "${startup_command}" != "" ]; then
+                echo "${startup_command}#${container_id}" >> "${SYSCONFIG_FILE}"
+            fi
+        
+        done
+    
+        if [ -e "${SYSCONFIG_FILE}" ]; then
+            chmod 600 "${SYSCONFIG_FILE}"
+        fi
+    
     fi
 
 fi
