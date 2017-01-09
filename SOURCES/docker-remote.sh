@@ -296,6 +296,12 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                         if [ "${remainder}" != "" ]; then
                             value="${value} ${remainder}"
+                            command="${key}=\"${value}\""
+
+                            while (( "${#}" )); do
+                                shift
+                            done
+
                         fi
 
                     fi

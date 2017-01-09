@@ -597,12 +597,12 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                             value="-e 'TMOUT=${TMOUT}' ${value}"
                         fi
 
-                        # Add localtime if not already set
-                        localtime_check=$(echo "${value}" | egrep -c "target=/etc/localtime,source=/etc/localtime")
+                        ## Add localtime if not already set
+                        #localtime_check=$(echo "${value}" | egrep -c "target=/etc/localtime,source=/etc/localtime")
 
-                        if [ ${localtime_check} -eq 0 ]; then
-                            value="--mount target=/etc/localtime,source=/etc/localtime ${value}"
-                        fi
+                        #if [ ${localtime_check} -eq 0 ]; then
+                        #    value="--mount target=/etc/localtime,source=/etc/localtime ${value}"
+                        #fi
 
                         # Add logging if not already set
                         logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
