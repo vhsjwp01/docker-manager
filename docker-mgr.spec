@@ -12,12 +12,12 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: %{my_major_ver}.%{my_minor_ver}.EL%{distro_major_ver}.%{my_build_ver}
+Release: %{my_build_ver}.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
 URL: https://stash.ingramcontent.com/projects/RPM/repos/docker-manager/browse
-Version: 1.0
+Version: %{my_major_ver}.%{my_minor_ver}
 BuildArch: noarch
 
 ## These BuildRequires can be found in Base
