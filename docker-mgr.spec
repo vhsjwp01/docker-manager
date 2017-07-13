@@ -1,7 +1,7 @@
 %define __os_install_post %{nil}
-%define my_major_ver %( date "+%y" )
-%define my_minor_ver %( date "+%m" )
-%define my_build_ver %( date "+%H%M%S" )
+%define my_major_ver %( date +"%y" )
+%define my_minor_ver %( date +"%m" )
+%define my_build_ver %( date +"%H%M%S" )
 %define uek %( uname -r | egrep -i uek | wc -l | awk '{print $1}' )
 %define rpm_arch %( uname -p )
 %define rpm_author Jason W. Plummer
@@ -66,46 +66,52 @@ docker-remote.  It also includes an init script and command file that
 can restart currently running docker containers following a reboot
 
 %install
-rm -rf %{buildroot}
-# Populate %{buildroot}
-mkdir -p %{buildroot}%{install_bin_dir}
-cp %{SOURCE0} %{buildroot}%{install_bin_dir}/%{remote_real_name}
-mkdir -p %{buildroot}%{install_sbin_dir}
-cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
-cp %{SOURCE4} %{buildroot}%{install_sbin_dir}/%{docker_tidy_real_name}
-mkdir -p %{buildroot}%{install_xinetd_dir}
-cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
-# Hack to make docker-constart work with systemd
-if [ "%{distro_major_ver}" -gt 6 ]; then
-    cp %{SOURCE3} %{buildroot}%{install_sbin_dir}/%{docker_constart_real_name}
-else
-    mkdir -p %{buildroot}%{install_initd_dir}/
-    cp %{SOURCE3} %{buildroot}%{install_initd_dir}/%{docker_constart_real_name}
-fi
-
-# Build packaging manifest
-rm -rf /tmp/MANIFEST.%{name}* > /dev/null 2>&1
-echo '%defattr(-,root,root)' > /tmp/MANIFEST.%{name}
-chown -R root:root %{buildroot} > /dev/null 2>&1
-cd %{buildroot}
-find . -depth -type d -exec chmod 755 {} \;
-find . -depth -type f -exec chmod 644 {} \;
-for i in `find . -depth -type f | sed -e 's/\ /zzqc/g'` ; do
-    filename=`echo "${i}" | sed -e 's/zzqc/\ /g'`
-    eval is_exe=`file "${filename}" | egrep -i "executable" | wc -l | awk '{print $1}'`
-    if [ "${is_exe}" -gt 0 ]; then
-        chmod 555 "${filename}"
+if [ "%{distro_major_ver}" != "" ]; then
+    rm -rf %{buildroot}
+    # Populate %{buildroot}
+    mkdir -p %{buildroot}%{install_bin_dir}
+    cp %{SOURCE0} %{buildroot}%{install_bin_dir}/%{remote_real_name}
+    mkdir -p %{buildroot}%{install_sbin_dir}
+    cp %{SOURCE1} %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
+    cp %{SOURCE4} %{buildroot}%{install_sbin_dir}/%{docker_tidy_real_name}
+    mkdir -p %{buildroot}%{install_xinetd_dir}
+    cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
+    # Hack to make docker-constart work with systemd
+    if [ "%{distro_major_ver}" -gt 6 ]; then
+        cp %{SOURCE3} %{buildroot}%{install_sbin_dir}/%{docker_constart_real_name}
+    else
+        mkdir -p %{buildroot}%{install_initd_dir}/
+        cp %{SOURCE3} %{buildroot}%{install_initd_dir}/%{docker_constart_real_name}
     fi
-done
-find . -type f -or -type l | sed -e 's/\ /zzqc/' -e 's/^.//' -e '/^$/d' > /tmp/MANIFEST.%{name}.tmp
-for i in `awk '{print $0}' /tmp/MANIFEST.%{name}.tmp` ; do
-    filename=`echo "${i}" | sed -e 's/zzqc/\ /g'`
-    dir=`dirname "${filename}"`
-    echo "${dir}/*"
-done | sort -u >> /tmp/MANIFEST.%{name}
-# Clean up what we can now and allow overwrite later
-rm -f /tmp/MANIFEST.%{name}.tmp
-chmod 666 /tmp/MANIFEST.%{name}
+    
+    # Build packaging manifest
+    rm -rf /tmp/MANIFEST.%{name}* > /dev/null 2>&1
+    echo '%defattr(-,root,root)' > /tmp/MANIFEST.%{name}
+    chown -R root:root %{buildroot} > /dev/null 2>&1
+    cd %{buildroot}
+    find . -depth -type d -exec chmod 755 {} \;
+    find . -depth -type f -exec chmod 644 {} \;
+    for i in `find . -depth -type f | sed -e 's/\ /zzqc/g'` ; do
+        filename=`echo "${i}" | sed -e 's/zzqc/\ /g'`
+        eval is_exe=`file "${filename}" | egrep -i "executable" | wc -l | awk '{print $1}'`
+        if [ "${is_exe}" -gt 0 ]; then
+            chmod 555 "${filename}"
+        fi
+    done
+    find . -type f -or -type l | sed -e 's/\ /zzqc/' -e 's/^.//' -e '/^$/d' > /tmp/MANIFEST.%{name}.tmp
+    for i in `awk '{print $0}' /tmp/MANIFEST.%{name}.tmp` ; do
+        filename=`echo "${i}" | sed -e 's/zzqc/\ /g'`
+        dir=`dirname "${filename}"`
+        echo "${dir}/*"
+    done | sort -u >> /tmp/MANIFEST.%{name}
+    # Clean up what we can now and allow overwrite later
+    rm -f /tmp/MANIFEST.%{name}.tmp
+    chmod 666 /tmp/MANIFEST.%{name}
+else
+    printf "Warning - lsb_release may not be installed"
+    /bin/false
+fi
+    
 
 # RPM provides four hooks for injecting commands into the installation and uninstallation sequences: 
 # two for installation and two for uninstallation. All hooks run on the target system and are generally 
