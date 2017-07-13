@@ -47,6 +47,9 @@
 # 20161110     Jason W. Plummer          Added support for missing output on
 #                                        rm, rmi, and swarm commands
 # 20170104     Jason W. Plummer          Fixed issues with docker service create
+# 20170613     Jason W. Plummer          Fixed issues with docker version 
+#                                        checking to support the new versioning
+#                                        schema
 
 ################################################################################
 # DESCRIPTION
@@ -304,22 +307,16 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                 if [ ${logging_check} -eq 0 ]; then
                     docker_major_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $1}')
                     docker_minor_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $2}')
+                    let ver_check=$(echo "${docker_major_ver}${docker_minor_ver}>19" | bc)
 
-                    let major_ver_check=$(echo "${docker_major_ver}>=1" | bc 2> /dev/null)
-                    let minor_ver_check=$(echo "${docker_minor_ver}>9" | bc 2> /dev/null)
+                    if [ ${ver_check} -eq 1 ]; then
 
-                    if [ ${major_ver_check} -gt 0 ]; then
+                        # New style log tagging supported after v1.9
+                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                    else
 
-                        if [ ${minor_ver_check} -gt 0 ]; then
-
-                            # New style log tagging supported after v1.9
-                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
-                        else
-
-                            # Old style log tagging supported up to v1.9
-                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
-                        fi
-
+                        # Old style log tagging supported up to v1.9
+                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
                     fi
 
                 fi
@@ -610,24 +607,18 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                         if [ ${logging_check} -eq 0 ]; then
                             docker_major_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $1}')
                             docker_minor_ver=$(docker -v | awk -F',' '{print $1}' | awk '{print $NF}' | awk -F'-' '{print $1}' | awk -F'.' '{print $2}')
-
-                            let major_ver_check=$(echo "${docker_major_ver}>=1" | bc 2> /dev/null)
-                            let minor_ver_check=$(echo "${docker_minor_ver}>9" | bc 2> /dev/null)
-
-                            if [ ${major_ver_check} -gt 0 ]; then
-
-                                if [ ${minor_ver_check} -gt 0 ]; then
-
-                                    # New style log tagging supported after v1.9
-                                    value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
-                                else
-
-                                    # Old style log tagging supported up to v1.9
-                                    value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
-                                fi
-
+                            let ver_check=$(echo "${docker_major_ver}${docker_minor_ver}>19" | bc)
+  
+                            if [ ${ver_check} -eq 1 ]; then
+  
+                                # New style log tagging supported after v1.9
+                                value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                            else
+  
+                                # Old style log tagging supported up to v1.9
+                                value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
                             fi
-
+  
                         fi
 
                         echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"

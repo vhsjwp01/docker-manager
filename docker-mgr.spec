@@ -1,4 +1,7 @@
 %define __os_install_post %{nil}
+%define my_major_ver %( date +%y )
+%define my_minor_ver %( date +%m )
+%define my_build_ver %( date +%H%M%S )
 %define uek %( uname -r | egrep -i uek | wc -l | awk '{print $1}' )
 %define rpm_arch %( uname -p )
 %define rpm_author Jason W. Plummer
@@ -9,7 +12,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: 1.44.EL%{distro_major_ver}
+Release: %{my_major_ver}.%{my_minor_ver}-%{my_build_ver}.EL%{distro_major_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
