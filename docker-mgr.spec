@@ -12,7 +12,7 @@
 
 Summary: A simple client-server method to invoke docker commands
 Name: docker-manager
-Release: %{my_major_ver}.%{my_minor_ver}-%{my_build_ver}.EL%{distro_major_ver}
+Release: %{my_major_ver}.%{my_minor_ver}.EL%{distro_major_ver}-%{my_build_ver}
 License: GNU
 Group: Docker/Management
 BuildRoot: %{_tmppath}/%{name}-root
