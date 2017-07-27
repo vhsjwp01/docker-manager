@@ -50,6 +50,12 @@
 # 20170613     Jason W. Plummer          Fixed issues with docker version 
 #                                        checking to support the new versioning
 #                                        schema
+# 20170613     Jason W. Plummer          Fixed issues with logging docker
+#                                        service commands
+# 20170727     Jason W. Plummer          Added DOCKER_RUNTIME_HOST variable and
+#                                        bind mount for /etc/localtime for swarm
+#                                        operations.  Added better remote 
+#                                        command line obvuscation in transport
 
 ################################################################################
 # DESCRIPTION
@@ -94,6 +100,34 @@ syslog_transport="udp"
 docker_base_label="com.ingramcontent"
 
 ################################################################################
+# SUBROUTINES
+################################################################################
+#
+
+check_command_payload() {
+    TEMP_DIR="/tmp/docker_mgr/$$"
+    rm -rf "${TEMP_DIR}" > /dev/null 2>&1
+    mkdir -p "${TEMP_DIR}"
+    chmod -R 700 "${TEMP_DIR}"
+
+    prefix_value=$(echo "${input}" | awk -F':' '/\.:/ {print $1}' | sed -e 's?\.$??g')
+    suffix_value=$(echo "${input}" | awk -F':' '/:\./ {print $NF}' | sed -e 's?^\.??g')
+    remote_command_payload=$(echo "${input}" | sed -e "s/${prefix_value}\.://g" -e "s/:\.${suffix_value}//g")
+    echo "${remote_command_payload}" | base64 -d > "${TEMP_DIR}"/post_transport.gz
+    gunzip "${TEMP_DIR}"/post_transport.gz
+    remote_command=$(awk '{print $0}' "${TEMP_DIR}"/post_transport)
+    remote_command_payload_cksum=$(echo "${prefix_value}/${suffix_value}" | bc)
+    payload_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
+    rm -f "${TEMP_DIR}"/post_transport* > /dev/null 2>&1
+    
+    if [ ${payload_cksum} -ne ${remote_command_payload_cksum} ]; then
+        input=""
+    else
+        input="${remote_command}"
+    fi
+}
+
+################################################################################
 # MAIN
 ################################################################################
 #
@@ -102,6 +136,8 @@ err_file="/tmp/docker.$$.err"
 rm -f "${err_file}" > /dev/null 2>&1
 
 read input
+check_command_payload
+
 let input_wc=$(echo "${input}" | wc -w | awk '{print $1}')
 
 if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
@@ -276,8 +312,17 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                 fi
 
+                # Add docker labels if defined
                 if [ "${docker_labels}" != "" ]; then
                     value="${docker_labels} ${value}"
+                fi
+
+                # Add DOCKER_RUNTIME_HOST if not already set
+                docker_runtime_host_check=$(echo "${value}" | egrep -c "\-e DOCKER_RUNTIME_HOST=")
+
+                if [ ${docker_runtime_host_check} -eq 0 ]; then
+                    DOCKER_RUNTIME_HOST=$(hostname) &&
+                    value="-e 'DOCKER_RUNTIME_HOST=${DOCKER_RUNTIME_HOST}' ${value}"
                 fi
                 
                 # Add TMOUT if not already set
@@ -583,8 +628,17 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
 
                         fi
 
+                        # Add docker labels if defined
                         if [ "${docker_labels}" != "" ]; then
                             value="${docker_labels} ${value}"
+                        fi
+
+                        # Add DOCKER_RUNTIME_HOST if not already set
+                        docker_runtime_host_check=$(echo "${value}" | egrep -c "\-e DOCKER_RUNTIME_HOST=")
+
+                        if [ ${docker_runtime_host_check} -eq 0 ]; then
+                            DOCKER_RUNTIME_HOST=$(hostname) &&
+                            value="-e 'DOCKER_RUNTIME_HOST=${DOCKER_RUNTIME_HOST}' ${value}"
                         fi
 
                         # Add TMOUT if not already set
@@ -594,12 +648,13 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
                             value="-e 'TMOUT=${TMOUT}' ${value}"
                         fi
 
-                        ## Add localtime if not already set
-                        #localtime_check=$(echo "${value}" | egrep -c "target=/etc/localtime,source=/etc/localtime")
+                        # Add localtime if not already set
+                        localtime_check=$(echo "${value}" | egrep -c "dst=/etc/localtime|src=/etc/localtime")
 
-                        #if [ ${localtime_check} -eq 0 ]; then
-                        #    value="--mount target=/etc/localtime,source=/etc/localtime ${value}"
-                        #fi
+
+                        if [ ${localtime_check} -eq 0 ]; then
+                            value="--mount type=bind,src=/etc/localtime,dst=/etc/localtime ${value}"
+                        fi
 
                         # Add logging if not already set
                         logging_check=$(echo "${value}" | egrep -c "\-\-log_driver=")
@@ -621,7 +676,7 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
   
                         fi
 
-                        echo "`date`: Running command \"docker ${key} ${value}\"" >> "${LOGFILE}"
+                        echo "`date`: Running command \"docker ${key} ${service_action} ${value}\"" >> "${LOGFILE}"
                         eval docker ${key} ${service_action} ${value} >> ${err_file} 2>&1
                         exit_code=${?}
                     ;;

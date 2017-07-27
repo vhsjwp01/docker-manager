@@ -36,6 +36,7 @@
 # 20161117     Jason W. Plummer          Added additional command injection 
 #                                        protection regexes
 # 20170104     Jason W. Plummer          Fixed issues with docker service create
+# 20170727     Jason W. Plummer          New command transmission obvuscation
 
 ################################################################################
 # DESCRIPTION
@@ -162,6 +163,29 @@ exit_code=${SUCCESS}
 docker_mgr_port=${DOCKER_MGR_PORT}
 
 ################################################################################
+# SUBROUTINES
+################################################################################
+#
+
+sanitize_command() {
+    TEMP_DIR="/tmp/docker_mgr/$$"
+    rm -rf "${TEMP_DIR}" > /dev/null 2>&1
+    mkdir -p "${TEMP_DIR}" 
+    chmod -R 700 "${TEMP_DIR}"
+
+    sanitized_command=$(echo "${command}" | sed -e 's?\`??g' -e 's?&&??g')
+    echo "${sanitized_command}" > "${TEMP_DIR}"/pre_transport
+    gzip "${TEMP_DIR}"/pre_transport &&
+    remote_command_payload=$(base64 "${TEMP_DIR}"/pre_transport.gz)
+    
+    randomnum=$((RANDOM%100))
+    remote_command_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
+    new_sum=$(echo "${remote_command_cksum}*${randomnum}" | bc)
+    remote_command_flight="${new_sum}.:${remote_command_payload}:.${randomnum}"
+    rm -f "${TEMP_DIR}"/pre_transport*
+}
+
+################################################################################
 # MAIN
 ################################################################################
 #
@@ -174,18 +198,9 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 # 3. Tell the docker container host to stop the relevant container ID(s)
 # 4. Tell the docker container host to run the new container process
 
-## Make sure we have only two arguments
-#if [ ${exit_code} -eq ${SUCCESS} ]; then
-#
-#    if [ ${#} -ne 2 ]; then
-#        err_msg="${0} accepts two arguments and two arguments only"
-#        exit_code=${ERROR}
-#    fi
-#
-#fi
-
 # WHAT: See if netcat requires units for timeout:
 # WHY:  Matters later
+#
 if [ ${exit_code} -eq ${SUCCESS} ]; then
     let timeout_unit_check=$(nc -w ${TIMEOUT}s 2>&1 | egrep -c "timeout cannot be negative")
 
@@ -324,12 +339,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     images)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Docker images on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -337,12 +354,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     inspect=*)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Inspection of docker container/image ${value} on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -350,12 +369,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     list)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Docker containers running on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -363,12 +384,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     listall)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Docker containers present on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -376,12 +399,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     network=*)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Output of docker network command on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
                             echo
                         done
 
@@ -389,12 +414,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     service=*)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Output of docker service command on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}" | egrep -v "^${SUCCESS}::$" | sed -e 's?^[0-9]*::?    ERROR MSG: ?g'
                             echo
                         done
 
@@ -402,12 +429,14 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     stats=*)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
                             echo "Status of docker container ${value} on host: ${docker_host}"
                             echo "============================================="
-                            echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                             echo
                         done
 
@@ -415,14 +444,16 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
                     *)
                         # Replace spaces with spaceholders
-                        sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
 
                         for docker_host in ${remote_host} ; do
 
                             if [ ${exit_code} -eq ${SUCCESS} ]; then
                                 #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
                                 #return_code=$(echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
-                                cmd_output=$(echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
+                                #cmd_output=$(echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
+                                cmd_output=$(echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}")
                                 return_code=$(echo -ne "${cmd_output}\n" | head -1 | awk -F'::' '{print $1}')
 
                                 if [ "${return_code}" = "" ]; then
