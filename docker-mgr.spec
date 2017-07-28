@@ -1,7 +1,7 @@
 %define __os_install_post %{nil}
 %define my_major_ver %( date +"%y" )
 %define my_minor_ver %( date +"%m" )
-%define my_build_ver %( date | awk '{print $4}' | sed -e 's/://g' )
+%define my_build_ver %( date | awk '{print $3$4}' | sed -e 's/://g' )
 %define uek %( uname -r | egrep -i uek | wc -l | awk '{print $1}' )
 %define rpm_arch %( uname -p )
 %define rpm_author Jason W. Plummer
