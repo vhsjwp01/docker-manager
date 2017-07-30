@@ -37,6 +37,7 @@
 #                                        protection regexes
 # 20170104     Jason W. Plummer          Fixed issues with docker service create
 # 20170727     Jason W. Plummer          New command transmission obvuscation
+# 20170730     Jason W. Plummer          Added command and command_arg "version"
 
 ################################################################################
 # DESCRIPTION
@@ -88,10 +89,10 @@
 #    network  <Instructs remote host to start a container network instance via SWARM>                                       
 #                 NOTE: <command_arg> is *REQUIRED*:                                                      
 #                 - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob             
+#    version  <Reports local version of docker-remote and docker (if installed)>
+#                 NOTE: Can also be used as a <command_arg> to report remote versions of docker and
+#                       docker-remote
 #                                      
-# test_env        - Built-in <command> that sets the host to be the TEST boxen
-# qa_env          - Built-in <command> that sets the host to be the QA boxen
-# prod_env        - Built-in <command> that sets the host to be the PROD boxen
 
 ################################################################################
 # CONSTANTS
@@ -148,9 +149,9 @@ USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  
 USAGE="${USAGE}[     network  <Instructs remote host to start a container network instance via SWARM>                         ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  NOTE: <command_arg> is *REQUIRED*:                                                          ]${USAGE_ENDLINE}"
 USAGE="${USAGE}[                  - <command_arg> *MUST* be a single argument.  Encapsulate in quotes to glob                 ]${USAGE_ENDLINE}"
-USAGE="${USAGE}[     test_env <Built-in <command> that sets the host to be the TEST boxen>                                    ]${USAGE_ENDLINE}"
-USAGE="${USAGE}[     qa_env   <Built-in <command> that sets the host to be the QA boxen>                                      ]${USAGE_ENDLINE}"
-USAGE="${USAGE}[     prod_env <Built-in <command> that sets the host to be the PROD boxen>                                    ]"
+USAGE="${USAGE}[     version  <Reports local version of docker-remote and docker (if installed)>                              ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                  NOTE: Can also be used as a <command_arg> to report remote versions of docker and           ]${USAGE_ENDLINE}"
+USAGE="${USAGE}[                        docker-remote                                                                         ]"
 
 ################################################################################
 # VARIABLES
@@ -219,26 +220,17 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
 
         case "${1}" in
 
-            test_env)
-                remote_host="lvicdockert01.ingramcontent.com lvicdockert02.ingramcontent.com lvicdockert03.ingramcontent.com"
-                shift
+            version)
+                echo "Docker-Remote version: ::DRVERSION::"
+                my_docker=$(which docker 2> /dev/null)
+
+                if [ "${my_docker}" != "" ]; then
+                    echo -ne "Local Docker version:\n$(docker version)"
+                fi
+
+                exit ${exit_code}
             ;;
 
-            qa_env)
-                remote_host="lvicdockerq01.ingramcontent.com lvicdockerq02.ingramcontent.com lvicdockerq03.ingramcontent.com"
-                shift
-            ;;
-
-            prod_env)
-                remote_host="lvicdockerp01.ingramcontent.com lvicdockerp02.ingramcontent.com"
-                shift
-            ;;
-
-            dmz_env)
-                remote_host="lvicdockerp03.ingramcontent.com lvicdockerp04.ingramcontent.com"
-                shift
-            ;;
-  
             *)
                 remote_host=$(echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $1}' | sed -e 's?\`??g' -e 's?&&??')
                 remote_port=$(echo "${1}" | sed -e 's?:?\ ?g' | awk '{print $2}' | sed -e 's?[^0-9]??g' -e 's?\`??g' -e 's?&&??g')
@@ -288,7 +280,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
     
             case "${key}" in
     
-                images|list|listall)
+                images|list|listall|version)
                     command="${key}"
                     shift
                 ;;

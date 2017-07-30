@@ -56,6 +56,7 @@
 #                                        bind mount for /etc/localtime for swarm
 #                                        operations.  Added better remote 
 #                                        command line obvuscation in transport
+# 20170730     Jason W. Plummer          Added command and command_arg "version"
 
 ################################################################################
 # DESCRIPTION
@@ -145,6 +146,21 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
     value=$(echo "${input}" | sed -e "s?^${key}=??g" -e 's?:ZZqC:?\ ?g' -e 's?\"??g' -e 's?\`??g')
 
     case ${key} in
+
+        version)
+            report_status="no"
+            echo "`date`: Running command \"docker version" >> "${LOGFILE}"
+            echo "Docker-Remote version: ::DRVERSION::"
+            echo -ne "Local Docker version:\n$(docker version 2>> ${err_file})"
+            exit_code=${?}
+        ;;
+
+        list)
+            report_status="no"
+            echo "`date`: Running command \"docker ps -f status=running\"" >> "${LOGFILE}"
+            docker ps -f status=running 2>> ${err_file}
+            exit_code=${?}
+        ;;
 
         images)
             report_status="no"

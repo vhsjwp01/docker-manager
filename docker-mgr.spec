@@ -76,6 +76,9 @@ if [ "%{distro_major_ver}" != "" ]; then
     cp %{SOURCE4} %{buildroot}%{install_sbin_dir}/%{docker_tidy_real_name}
     mkdir -p %{buildroot}%{install_xinetd_dir}
     cp %{SOURCE2} %{buildroot}%{install_xinetd_dir}/%{xinetd_real_name}
+    # Add docker-remote version variable to docker-remote and docker_mgr
+    sed -i -e "s/::DRVERSION::/%{my_major_ver}.%{my_minor_ver} Build %{my_build_ver}/g" %{buildroot}%{install_bin_dir}/%{remote_real_name}
+    sed -i -e "s/::DRVERSION::/%{my_major_ver}.%{my_minor_ver} Build %{my_build_ver}/g" %{buildroot}%{install_sbin_dir}/%{mgr_real_name}
     # Hack to make docker-constart work with systemd
     if [ "%{distro_major_ver}" -gt 6 ]; then
         cp %{SOURCE3} %{buildroot}%{install_sbin_dir}/%{docker_constart_real_name}
