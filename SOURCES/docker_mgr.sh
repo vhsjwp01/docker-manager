@@ -159,15 +159,13 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
         version)
             report_status="no"
             echo "`date`: Running command \"docker version" >> "${LOGFILE}"
-            echo "Host $(hostname): Docker-Remote version: ::DRVERSION::"
-            echo -ne "Host $(hostname): Local Docker version:\n$(docker version 2>> ${err_file})"
-            exit_code=${?}
-        ;;
-
-        list)
-            report_status="no"
-            echo "`date`: Running command \"docker ps -f status=running\"" >> "${LOGFILE}"
-            docker ps -f status=running 2>> ${err_file}
+            echo "Host $(hostname): Docker-Remote version:"
+            echo "========================================"
+            echo "    ::DRVERSION::"
+            echo 
+            echo "Host $(hostname): Local Docker version:"
+            echo "========================================"
+            docker version 2>> ${err_file}
             exit_code=${?}
         ;;
 

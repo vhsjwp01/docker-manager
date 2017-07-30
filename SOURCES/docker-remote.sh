@@ -225,11 +225,16 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
         case "${1}" in
 
             version)
-                echo "Host $(hostname): Docker-Remote version: ::DRVERSION::"
+                echo "Host $(hostname): Docker-Remote version:"
+                echo "========================================"
+                echo "    ::DRVERSION::"
                 my_docker=$(which docker 2> /dev/null)
 
                 if [ "${my_docker}" != "" ]; then
-                    echo -ne "Host $(hostname): Local Docker version:\n$(docker version)"
+                    echo 
+                    echo "Host $(hostname): Local Docker version:"
+                    echo "========================================"
+                    ${my_docker} version
                 fi
 
                 exit ${exit_code}
@@ -332,6 +337,19 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                 return_code=${SUCCESS}
 
                 case ${command} in
+
+                    version)
+                        # Replace spaces with spaceholders
+                        #sanitized_command=$(echo "${command}" | sed -e 's?\ ?:ZZqC:?g' | sed -e 's?\`??g' -e 's?&&??g')
+                        sanitize_command
+
+                        for docker_host in ${remote_host} ; do
+                            #echo "${sanitized_command}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo "${remote_command_flight}" | nc -w ${TIMEOUT} "${docker_host}" "${docker_mgr_port}"
+                            echo
+                        done
+
+                    ;;
 
                     images)
                         # Replace spaces with spaceholders
