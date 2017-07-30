@@ -225,11 +225,11 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
         case "${1}" in
 
             version)
-                echo "Docker-Remote version: ::DRVERSION::"
+                echo "Host $(hostname): Docker-Remote version: ::DRVERSION::"
                 my_docker=$(which docker 2> /dev/null)
 
                 if [ "${my_docker}" != "" ]; then
-                    echo -ne "Local Docker version:\n$(docker version)"
+                    echo -ne "Host $(hostname): Local Docker version:\n$(docker version)"
                 fi
 
                 exit ${exit_code}

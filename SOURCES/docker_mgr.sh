@@ -58,7 +58,7 @@
 #                                        command line obvuscation in transport
 # 20170730     Jason W. Plummer          Added command and command_arg "version"
 #                                        and added check for division by zero
-#                                        during command de-obvuscation
+#                                        during command de-obvuscation 
 
 ################################################################################
 # DESCRIPTION
@@ -159,8 +159,8 @@ if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
         version)
             report_status="no"
             echo "`date`: Running command \"docker version" >> "${LOGFILE}"
-            echo "Docker-Remote version: ::DRVERSION::"
-            echo -ne "Local Docker version:\n$(docker version 2>> ${err_file})"
+            echo "Host $(hostname): Docker-Remote version: ::DRVERSION::"
+            echo -ne "Host $(hostname): Local Docker version:\n$(docker version 2>> ${err_file})"
             exit_code=${?}
         ;;
 
