@@ -178,9 +178,20 @@ sanitize_command() {
     chmod -R 700 "${TEMP_DIR}"
 
     sanitized_command=$(echo "${command}" | sed -e 's?\`??g' -e 's?&&??g')
-    echo "${sanitized_command}" > "${TEMP_DIR}"/pre_transport
+    echo -ne "${sanitized_command}" > "${TEMP_DIR}"/pre_transport
     gzip "${TEMP_DIR}"/pre_transport &&
-    remote_command_payload=$(base64 "${TEMP_DIR}"/pre_transport.gz)
+    remote_command_payload_multi=$(base64 "${TEMP_DIR}"/pre_transport.gz)
+    remote_command_payload=""
+
+    for line in ${remote_command_payload_multi} ; do
+
+        if [ "${remote_command_payload}" = "" ]; then
+            remote_command_payload="${line}"
+        else
+            remote_command_payload="${remote_command_payload}${line}"
+        fi
+
+    done
     
     randomnum=$((RANDOM%100))
     let randomnum=${randomnum}+1
@@ -474,7 +485,7 @@ if [ ${exit_code} -eq ${SUCCESS} ]; then
                                     echo "${STDOUT_OFFSET}INFO:  No return code received from docker container host \"${docker_host}\":"
                                     return_code=${ERROR}
                                 else
-                                    return_msg=$(echo "${cmd_output}" | sed -e "s/^${return_code}:://g")
+                                    return_msg=$(echo "${cmd_output}" | sed -e "s?^${return_code}::??g")
 
                                     if [ "${return_msg}" != "" ]; then
                                         echo "${STDOUT_OFFSET}INFO:  Response from docker container host \"${docker_host}\":"

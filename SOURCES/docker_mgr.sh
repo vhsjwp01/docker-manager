@@ -116,7 +116,7 @@ check_command_payload() {
     let prefix_value=$(echo "${input}" | awk -F':' '/\.:/ {print $1}' | sed -e 's?\.$??g')
     let suffix_value=$(echo "${input}" | awk -F':' '/:\./ {print $NF}' | sed -e 's?^\.??g')
     remote_command_payload=$(echo "${input}" | sed -e "s/${prefix_value}\.://g" -e "s/:\.${suffix_value}//g")
-    echo "${remote_command_payload}" | base64 -d > "${TEMP_DIR}"/post_transport.gz
+    echo -ne "${remote_command_payload}" | base64 -d > "${TEMP_DIR}"/post_transport.gz
     gunzip "${TEMP_DIR}"/post_transport.gz
     remote_command=$(awk '{print $0}' "${TEMP_DIR}"/post_transport)
     rm -f "${TEMP_DIR}"/post_transport* > /dev/null 2>&1
@@ -148,9 +148,7 @@ rm -f "${err_file}" > /dev/null 2>&1
 read input
 check_command_payload
 
-let input_wc=$(echo "${input}" | wc -w | awk '{print $1}')
-
-if [ "${input}" != "" -a ${input_wc} -eq 1 ]; then
+if [ "${input}" != "" ]; then
     key=$(echo "${input}" | awk -F'=' '{print $1}' | sed -e 's?\`??g')
     value=$(echo "${input}" | sed -e "s?^${key}=??g" -e 's?:ZZqC:?\ ?g' -e 's?\"??g' -e 's?\`??g')
 
