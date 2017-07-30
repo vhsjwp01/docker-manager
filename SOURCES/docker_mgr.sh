@@ -108,7 +108,7 @@ docker_base_label="com.ingramcontent"
 #
 
 check_command_payload() {
-    TEMP_DIR="/tmp/docker_mgr/$$"
+    TEMP_DIR="/tmp/docker_mgr_$$"
     rm -rf "${TEMP_DIR}" > /dev/null 2>&1
     mkdir -p "${TEMP_DIR}"
     chmod -R 700 "${TEMP_DIR}"
@@ -119,7 +119,7 @@ check_command_payload() {
     echo -ne "${remote_command_payload}" | base64 -d > "${TEMP_DIR}"/post_transport.gz
     gunzip "${TEMP_DIR}"/post_transport.gz
     remote_command=$(awk '{print $0}' "${TEMP_DIR}"/post_transport)
-    rm -f "${TEMP_DIR}"/post_transport* > /dev/null 2>&1
+    rm -rf "${TEMP_DIR}" > /dev/null 2>&1
 
     if [ ${suffix_value} -gt 0 ]; then
         remote_command_payload_cksum=$(echo "${prefix_value}/${suffix_value}" | bc)

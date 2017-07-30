@@ -172,7 +172,7 @@ docker_mgr_port=${DOCKER_MGR_PORT}
 #
 
 sanitize_command() {
-    TEMP_DIR="/tmp/docker_mgr/$$"
+    TEMP_DIR="/tmp/docker_remote_$$"
     rm -rf "${TEMP_DIR}" > /dev/null 2>&1
     mkdir -p "${TEMP_DIR}" 
     chmod -R 700 "${TEMP_DIR}"
@@ -198,7 +198,7 @@ sanitize_command() {
     remote_command_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
     new_sum=$(echo "${remote_command_cksum}*${randomnum}" | bc)
     remote_command_flight="${new_sum}.:${remote_command_payload}:.${randomnum}"
-    rm -f "${TEMP_DIR}"/pre_transport*
+    rm -rf "${TEMP_DIR}" > /dev/null 2>&1
 }
 
 ################################################################################
