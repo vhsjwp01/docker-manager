@@ -57,6 +57,8 @@
 #                                        operations.  Added better remote 
 #                                        command line obvuscation in transport
 # 20170730     Jason W. Plummer          Added command and command_arg "version"
+#                                        and added check for division by zero
+#                                        during command de-obvuscation
 
 ################################################################################
 # DESCRIPTION
@@ -111,20 +113,27 @@ check_command_payload() {
     mkdir -p "${TEMP_DIR}"
     chmod -R 700 "${TEMP_DIR}"
 
-    prefix_value=$(echo "${input}" | awk -F':' '/\.:/ {print $1}' | sed -e 's?\.$??g')
-    suffix_value=$(echo "${input}" | awk -F':' '/:\./ {print $NF}' | sed -e 's?^\.??g')
+    let prefix_value=$(echo "${input}" | awk -F':' '/\.:/ {print $1}' | sed -e 's?\.$??g')
+    let suffix_value=$(echo "${input}" | awk -F':' '/:\./ {print $NF}' | sed -e 's?^\.??g')
     remote_command_payload=$(echo "${input}" | sed -e "s/${prefix_value}\.://g" -e "s/:\.${suffix_value}//g")
     echo "${remote_command_payload}" | base64 -d > "${TEMP_DIR}"/post_transport.gz
     gunzip "${TEMP_DIR}"/post_transport.gz
     remote_command=$(awk '{print $0}' "${TEMP_DIR}"/post_transport)
-    remote_command_payload_cksum=$(echo "${prefix_value}/${suffix_value}" | bc)
-    payload_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
     rm -f "${TEMP_DIR}"/post_transport* > /dev/null 2>&1
-    
-    if [ ${payload_cksum} -ne ${remote_command_payload_cksum} ]; then
-        input=""
+
+    if [ ${suffix_value} -gt 0 ]; then
+        remote_command_payload_cksum=$(echo "${prefix_value}/${suffix_value}" | bc)
+        payload_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
+        
+        if [ ${payload_cksum} -ne ${remote_command_payload_cksum} ]; then
+            input=""
+        else
+            input="${remote_command}"
+        fi
+
     else
-        input="${remote_command}"
+        remote_command=""
+        input=""
     fi
 }
 

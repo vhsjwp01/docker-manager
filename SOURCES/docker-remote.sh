@@ -38,6 +38,9 @@
 # 20170104     Jason W. Plummer          Fixed issues with docker service create
 # 20170727     Jason W. Plummer          New command transmission obvuscation
 # 20170730     Jason W. Plummer          Added command and command_arg "version"
+#                                        and prevented division by zero in 
+#                                        remote command de-obvuscation on server
+#                                        side
 
 ################################################################################
 # DESCRIPTION
@@ -180,6 +183,7 @@ sanitize_command() {
     remote_command_payload=$(base64 "${TEMP_DIR}"/pre_transport.gz)
     
     randomnum=$((RANDOM%100))
+    let randomnum=${randomnum}+1
     remote_command_cksum=$(echo "${remote_command_payload}" | cksum | awk '{print $1}')
     new_sum=$(echo "${remote_command_cksum}*${randomnum}" | bc)
     remote_command_flight="${new_sum}.:${remote_command_payload}:.${randomnum}"
