@@ -49,7 +49,7 @@ case "$1" in
                     if [ "${named_container_id}" != "" ]; then
                         echo "  INFO:  Running docker command:"
                         echo "  docker rm ${named_container_id}"
-                        eval docker rm ${container_id} > /dev/null 2>&1
+                        eval docker rm ${named_container_id} > /dev/null 2>&1
                     fi
   
                 fi
