@@ -171,21 +171,6 @@ if [ "%{distro_major_ver}" -lt 7 ]; then
     /bin/true
     service %{docker_constart_real_name} populate
     /bin/true
-else
-    docker_constart_sysconfig_file="/etc/sysconfig/docker-constart"
-    docker_constart_comment="# docker-constart hack"
-    install_target_file="/etc/rc.local"
-    chmod 750 "${install_target_file}"
-    chmod 750 "%{install_sbin_dir}/%{docker_constart_real_name}"
-    let rc_local_check=$(egrep "${docker_constart_comment}" "${install_target_file}" | wc -l | awk '{print $1}')
-    if [ ${rc_local_check} -eq 0 ]; then
-        echo "${docker_constart_comment}"                                                                                     >> "${install_target_file}"
-        echo "if [ -e \"${docker_constart_sysconfig_file}\" ]; then                               ${docker_constart_comment}" >> "${install_target_file}" 
-        echo "    nohup %{install_sbin_dir}/%{docker_constart_real_name} start > /dev/null 2>&1 & ${docker_constart_comment}" >> "${install_target_file}" 
-        echo "fi                                                                                  ${docker_constart_comment}" >> "${install_target_file}"
-    fi
-    %{install_sbin_dir}/%{docker_constart_real_name} populate
-    /bin/true
 fi
 
 %preun
@@ -212,10 +197,6 @@ if [ "${1}" = "0" ]; then
         rm -f /tmp/services.$$
     fi
     service xinetd restart > /dev/null 2>&1
-    if [ "%{distro_major_ver}" -gt 6 ]; then
-        cp -p /etc/rc.local /tmp/rc.local.$$
-        egrep -v "# docker-constart hack" /tmp/rc.local.$$ > /etc/rc.local
-    fi
 fi
 /bin/true
 
