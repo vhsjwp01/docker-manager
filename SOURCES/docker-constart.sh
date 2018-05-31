@@ -36,8 +36,8 @@ case "$1" in
             docker_commands=$(awk '{print $0}' "${SYSCONFIG_FILE}" | sed -e 's?\ ?:zzQc:?g')
 
             for docker_command in ${docker_commands} ; do
-                old_container_hash=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' '{print $2}')
-                this_docker_command=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' '{print $1}')
+                old_container_hash=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' '{print $NF}')
+                this_docker_command=$(echo "${docker_command}" | sed -e 's?:zzQc:?\ ?g' | awk -F'#' -vOFS='#' '{NF=NF-1; print}')
 
                 # If --name was included, make sure that any previous containers of the same name
                 # have been removed
