@@ -40,7 +40,7 @@
 #                                        during docker-constart execution after
 #                                        reboot
 # 20160802     Jason W. Plummer          Added support for dynamic labeling
-# 20161003     Jason W. Plummer          Turned ingramcontent.com base label
+# 20161003     Jason W. Plummer          Turned <organization> base label
 #                                        into a variable
 # 20161107     Jason W. Plummer          Fixed /etc/localtime overlay.  Started
 #                                        adding swarm support
@@ -96,11 +96,11 @@ TMOUT=1800
 
 exit_code=${ERROR}
 
-syslog_port="514"
-syslog_server="log.ingramcontent.com"
-syslog_transport="udp"
+default_syslog_port="" # <put syslog server listening port here>
+default_syslog_server="" # <put syslog server hostname here>
+default_syslog_transport="udp"
 
-docker_base_label="com.ingramcontent"
+default_docker_base_label="${USER}.docker" # <customize organization domain here>
 
 ################################################################################
 # SUBROUTINES
@@ -264,14 +264,20 @@ if [ "${input}" != "" ]; then
             if [ "${value}" != "" ]; then
 
                 # Setup some useful docker labels
-                icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
+                docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
 
-                if [ "${icg_docker_build_check}" != "" ]; then
+                if [ "${docker_build_check}" != "" ]; then
+                    docker_base_label="${default_docker_base_label}"
+
+                    if [ ! -z "${DOCKER_BASE_LABEL}" ]; then
+                        docker_base_label="${DOCKER_BASE_LABEL}"
+                    fi
+
                     docker_labels=""
 
-                    label_container_name=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
-                    label_container_tag=$(echo "${icg_docker_build_check}" | awk -F':' '{print $NF}')
-                    label_container_namespace=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $(NF-1)}' | egrep -v "lvicdockregp")
+                    label_container_name=$(echo "${docker_build_check}" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
+                    label_container_tag=$(echo "${docker_build_check}" | awk -F':' '{print $NF}')
+                    label_container_namespace=$(echo "${docker_build_check}" | awk -F'/' '{print $(NF-1)}' | egrep -v "lvicdockregp")
                     label_container_build_date=$(echo "${label_container_tag}" | awk -F'.' '{print $1}')
                     label_container_environment=$(echo "${label_container_tag}" | awk -F'.' '{print $2}')
                     label_container_commit_hash=$(echo "${label_container_tag}" | awk -F'.' '{print $3}')
@@ -376,13 +382,34 @@ if [ "${input}" != "" ]; then
                     let ver_check=$(echo "${docker_major_ver}${docker_minor_ver}>19" | bc)
 
                     if [ ${ver_check} -eq 1 ]; then
+                        syslog_port="${default_syslog_port}"
+                        syslog_server="${default_syslog_server}"
+                        syslog_transport="${default_syslog_transport}"
+
+                        if [ ! -z "${SYSLOG_PORT}" ]; then
+                            syslog_port="${SYSLOG_PORT}"
+                        fi
+
+                        if [ ! -z "${SYSLOG_SERVER}" ]; then
+                            syslog_server="${SYSLOG_SERVER}"
+                        fi
+
+                        if [ ! -z "${SYSLOG_TRANSPORT}" ]; then
+                            syslog_transport="${SYSLOG_TRANSPORT}"
+                        fi
 
                         # New style log tagging supported after v1.9
-                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                        if [ ! -z "${syslog_port}" -a ! -z "${syslog_server}" -a ! -z "${syslog_transport}" ]; then
+                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt tag=\"$(hostname)/{{.ImageName}}/{{.Name}}/{{.ID}}\" ${value}"
+                        fi
+
                     else
 
                         # Old style log tagging supported up to v1.9
-                        value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                        if [ ! -z "${syslog_port}" -a ! -z "${syslog_server}" -a ! -z "${syslog_transport}" ]; then
+                            value="--log-driver=syslog --log-opt syslog-address=${syslog_transport}://${syslog_server}:${syslog_port} --log-opt syslog-tag=\"$(hostname)/docker-container-logs\" ${value}"
+                        fi
+
                     fi
 
                 fi
@@ -580,14 +607,14 @@ if [ "${input}" != "" ]; then
                         value=$(echo "${value}" | sed -e 's/^create //g')
 
                         # Setup some useful docker labels
-                        icg_docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
+                        docker_build_check=$(echo "${value}" | awk '{ for ( i = 1 ; i <= NF ; i++ ) { if ($i ~ /:[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]\./ ) print $i } }')
 
-                        if [ "${icg_docker_build_check}" != "" ]; then
+                        if [ "${docker_build_check}" != "" ]; then
                             docker_labels=""
 
-                            label_container_name=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
-                            label_container_tag=$(echo "${icg_docker_build_check}" | awk -F':' '{print $NF}')
-                            label_container_namespace=$(echo "${icg_docker_build_check}" | awk -F'/' '{print $(NF-1)}' | egrep -v "lvicdockregp")
+                            label_container_name=$(echo "${docker_build_check}" | awk -F'/' '{print $NF}' | awk -F':' '{print $1}')
+                            label_container_tag=$(echo "${docker_build_check}" | awk -F':' '{print $NF}')
+                            label_container_namespace=$(echo "${docker_build_check}" | awk -F'/' '{print $(NF-1)}' | egrep -v "lvicdockregp")
                             label_container_build_date=$(echo "${label_container_tag}" | awk -F'.' '{print $1}')
                             label_container_environment=$(echo "${label_container_tag}" | awk -F'.' '{print $2}')
                             label_container_commit_hash=$(echo "${label_container_tag}" | awk -F'.' '{print $3}')

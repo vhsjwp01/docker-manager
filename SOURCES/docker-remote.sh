@@ -209,7 +209,7 @@ sanitize_command() {
 # The "Process":
 # 1. Tell the docker container host to pull the new image name
 # 2. Look for related container(s) already running:
-#    docker ps -a | egrep "lvicdockregp01.ingramcontent.com:8080/prodstat:latest" | egrep -iv "exited" | awk '{print $1 ":" $2}'
+#    docker ps -a | egrep "<docker container identifier regex>" | egrep -iv "exited" | awk '{print $1 ":" $2}'
 #        - yields a list of matching container ID and image name pairs
 # 3. Tell the docker container host to stop the relevant container ID(s)
 # 4. Tell the docker container host to run the new container process
